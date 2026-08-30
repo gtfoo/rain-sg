@@ -1,0 +1,72 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    # paths-ignore deliberately does NOT list scripts/ (the deploy is how
+    # tooling reaches the droplet) or anything test-shaped (paths-ignore skips
+    # the WHOLE workflow including tests, silencing the gate on exactly the
+    # commits that move it).
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+
+concurrency:
+  group: deploy-rain-sg
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pin to 22 to match the droplet. A Node 20 runner would build fine here
+      # and this app has no native modules, but the version should still match
+      # what actually runs the server.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: node scripts/sanity.mjs
+      - run: npm run build
+
+      # Next does not copy .next/static or public into the standalone bundle,
+      # and the model is not traced either. Do it here, then verify.
+      - name: Assemble standalone bundle
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          if [ -d public ]; then cp -r public .next/standalone/public; fi
+          mkdir -p .next/standalone/src/model
+          cp src/model/model.json .next/standalone/src/model/model.json
+          ASSET=$(find .next/standalone/.next/static -type f | head -1)
+          [ -n "$ASSET" ] || { echo "no static output - refusing to ship"; exit 1; }
+          [ -f .next/standalone/src/model/model.json ] || { echo "model missing"; exit 1; }
+
+      - name: Ship it
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          port: ${{ secrets.DROPLET_PORT }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          source: ".next/standalone/**,scripts/**,package.json"
+          target: ${{ secrets.DROPLET_APP_DIR }}
+          overwrite: true
+
+      - name: Restart and verify
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          port: ${{ secrets.DROPLET_PORT }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            cd ${{ secrets.DROPLET_APP_DIR }}
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
