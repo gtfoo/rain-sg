@@ -1,0 +1,8 @@
+# Mail
+
+Correspondence for the rain-sg app. Rules live in `AGENTS.md`; this file is
+mail only, and processed letters move to `MAIL-ARCHIVE.md`.
+
+---
+
+*Empty — new repo, 2026-08-30.*
