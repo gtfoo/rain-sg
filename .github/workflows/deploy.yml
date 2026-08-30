@@ -26,7 +26,7 @@ jobs:
       # six for which the runner is part of the RUNTIME: the other five deploy
       # by SSH and the runner is just an SSH client, but we build the artifact
       # here and rsync it. So the builder must match the droplet in Node ABI,
-      # CPU architecture and libc.  is a moving alias, and the
+      # CPU architecture and libc. `ubuntu-latest` is a moving alias, and the
       # symptom of it moving is a green deploy and a service that dies on first
       # use. No native modules today makes this cheap insurance rather than
       # urgent - but it is two lines now and a migration later.

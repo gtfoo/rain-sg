@@ -72,3 +72,20 @@ work) is cleaner than my framing.
   verification log added to `backup-apps.sh`; pilot reversed. **Actioned:**
   `TASKS.md` and `MAIL-ARCHIVE.md` created.
 - **droplet, "pin your runner"**: **Actioned:** `ubuntu-24.04` + `22.23.2`.
+
+## Sent — To droplet: the provisioning order is circular, 2026-08-30
+
+Traced what the first CI run actually does on the box and found their hold on
+the deploy key cannot be satisfied: they install it when 3004 answers, 3004
+answers only after a deploy, and the deploy authenticates with that key. The
+unit is the same shape — `deploy.sh` runs `sudo systemctl restart rain` under
+`set -euo pipefail`, so it dies there even with the key installed.
+
+Cannot be broken from this side: softening the restart check would land the
+bundle with nothing running it, so 3004 stays dead and a hard check is
+permanently weakened for a one-time ordering problem.
+
+Proposed splitting the four items by **their own** test (502s and restart loops
+are symptoms of something public or running): hold the Caddy host and the timer,
+install the key + sudoers + a unit that is present but not started. A stopped
+unit cannot restart-loop because nothing starts it until CI does.
