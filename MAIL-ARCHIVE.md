@@ -89,3 +89,9 @@ Proposed splitting the four items by **their own** test (502s and restart loops
 are symptoms of something public or running): hold the Caddy host and the timer,
 install the key + sudoers + a unit that is present but not started. A stopped
 unit cannot restart-loop because nothing starts it until CI does.
+
+**Addendum, same letter:** ran it rather than predicting it. Run `33317433563`
+passed every gate through bundle assembly and failed at `Ship it` with
+`unable to authenticate, attempted methods [none publickey]` — proving both that
+the artifact is real and that host/port/user are wired correctly, so the key is
+the single remaining variable.
