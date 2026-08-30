@@ -1,0 +1,77 @@
+/* Minimalist by intent: the answer is a sentence, the bars are supporting
+   evidence. Nobody should read a chart to learn when to leave. */
+:root {
+  --ground: #edf1f3; --card: #fff; --ink: #0e1317; --ink-2: #3d4a55; --muted: #78848e;
+  --hair: #e2e8ec;
+  --r0: #dde6ec; --r1: #a8cadf; --r2: #5ea3cc; --r3: #2b7fb8; --r4: #175a87;
+  --accent: #2b7fb8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #080b0e; --card: #12181d; --ink: #e9eef2; --ink-2: #b4c0ca; --muted: #7c8a96;
+    --hair: #212a32;
+    --r0: #1e2830; --r1: #2f5570; --r2: #3e82ae; --r3: #5aaee0; --r4: #8fcdf0;
+    --accent: #5aaee0;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+.wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.card {
+  width: 100%; max-width: 380px; min-height: 520px; background: var(--card);
+  border-radius: 22px; padding: 22px 20px 18px; display: flex; flex-direction: column;
+  box-shadow: 0 14px 40px rgb(14 19 23 / 10%);
+}
+.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--hair);
+}
+.loc { font-weight: 600; font-size: 1rem; letter-spacing: -0.01em; }
+.chg, .geo {
+  font: inherit; font-size: 0.74rem; color: var(--muted); background: none;
+  border: 0; cursor: pointer; padding: 4px 2px;
+}
+.chg:hover, .geo:hover { color: var(--accent); }
+.find { padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+.find input {
+  font: inherit; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--hair);
+  background: transparent; color: var(--ink);
+}
+.find input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.geo { align-self: flex-start; }
+.results { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.results button {
+  width: 100%; text-align: left; background: none; border: 0; font: inherit; cursor: pointer;
+  padding: 9px 4px; border-bottom: 1px solid var(--hair); display: flex; flex-direction: column;
+}
+.results button:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.rname { font-size: 0.92rem; font-weight: 500; }
+.raddr { font-size: 0.76rem; color: var(--muted); }
+.verdict { padding: 30px 0 4px; flex: 1; }
+.head {
+  font-size: 2.25rem; font-weight: 700; letter-spacing: -0.035em; line-height: 1.05;
+  margin: 0 0 8px; white-space: pre-line; text-wrap: balance;
+}
+.detail { font-size: 1rem; color: var(--ink-2); margin: 0; max-width: 26ch; }
+.strip { margin-top: auto; padding-top: 20px; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 78px; }
+.bar { flex: 1; border-radius: 3px 3px 1px 1px; min-height: 3px; position: relative; }
+.bar span {
+  position: absolute; top: -16px; left: 0; right: 0; text-align: center;
+  font-size: 0.6rem; color: var(--muted);
+}
+.axis {
+  display: flex; justify-content: space-between; margin-top: 8px;
+  font-size: 0.65rem; color: var(--muted); letter-spacing: 0.04em;
+}
+.foot {
+  margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--hair);
+  display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted);
+}
+.hint { font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; }
+.pad { padding-top: 28px; }
+.err { font-size: 0.85rem; color: #c2453b; margin: 14px 0 0; }
