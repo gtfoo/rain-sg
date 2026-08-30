@@ -8,3 +8,8 @@ next-env.d.ts
 
 # State lives outside the tree (DATA_DIR); nothing here is deployable data.
 data/
+
+# Windows alternate-data-stream artifacts. `.env*.local` does not match
+# `.env.local:Zone.Identifier` because of the suffix, and it slipped into a
+# commit once.
+*Zone.Identifier
