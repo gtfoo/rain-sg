@@ -1,0 +1,8 @@
+# Force LF everywhere. This repo is edited from a Windows-rooted session but
+# runs on Linux; CRLF in scripts/deploy.sh reaches the droplet as `\r` and the
+# shell fails with "bad interpreter". Not hypothetical - git warned on the
+# first commit.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
