@@ -18,16 +18,21 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      # Pin to 22 to match the droplet. A Node 20 runner would build fine here
-      # and this app has no native modules, but the version should still match
-      # what actually runs the server.
+      # Pinned exactly, not to a moving alias. This app is the only one of the
+      # six for which the runner is part of the RUNTIME: the other five deploy
+      # by SSH and the runner is just an SSH client, but we build the artifact
+      # here and rsync it. So the builder must match the droplet in Node ABI,
+      # CPU architecture and libc.  is a moving alias, and the
+      # symptom of it moving is a green deploy and a service that dies on first
+      # use. No native modules today makes this cheap insurance rather than
+      # urgent - but it is two lines now and a migration later.
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.23.2"
           cache: npm
 
       - run: npm ci
