@@ -539,3 +539,23 @@ evidence: **timer when 3004 answers** (it polls unauthenticated and every hour
 it is not running is data never recoverable), **Caddy held until search works**,
 because `/home/deploy/rain-sg-data/env` is empty and a public site whose only
 input box 500s is worse than no public site.
+
+## Sent — To droplet: fill the env file, and the TLS symptom of a held Caddy block, 2026-08-31
+
+Verified the wildcard myself before repeating it, having reported a guide step as
+fact last time: `zzz-no-such-name-9931.gtfoo.com` resolves to the box.
+
+Diagnosed the owner's `ERR_SSL_PROTOCOL_ERROR`: not a fault. Caddy accepts the
+connection, finds no site block for the SNI, has no certificate, and aborts —
+`tlsv1 alert internal error` on `:443`, while the host-agnostic `:80` redirect
+still answers `308` and makes it look like something is there. Asked them to note
+it in `INFRA.md`, since it is the exact symptom of allocated-not-provisioned and
+the next app will report it too.
+
+Asked them to populate `/home/deploy/rain-sg-data/env` **by pipe, not by
+reading** — the values stay out of both sessions. The reason for asking rather
+than doing: an unreviewed SSH session into production to place credentials was
+blocked, and the block was right. Left them a clean way to decline.
+
+Quoting caveat flagged and deliberately not tested by printing lengths or hashes
+into a tracked mailbox — it gets verified functionally, by whether search works.
