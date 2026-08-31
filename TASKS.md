@@ -20,11 +20,41 @@ and a one-line task strands the *why*.
       coefficients is a real cost, so decide on complete evidence.
       `from: self · partial result, do not adopt on a quarter of the data`
 
-- [ ] **Onset warning is the real weakness.** Mean probability 15 minutes
-      before rain starts is ~17%. Every improvement so far has been to aggregate
-      Brier, which is dominated by quiet periods and says nothing about whether
-      a user would have been warned.
-      `from: self · measured on the 2024 holdout`
+- [ ] **Onset warning: decide the threshold, not the model.** Re-measured on
+      the fresh 2025 holdout (`onset2025.js`), which replaces the 2024 figure
+      the task used to quote — that set was contaminated by dozens of design
+      decisions.
+
+      | | ours | NEA |
+      |---|---|---|
+      | mean 15 min before onset | 20.1% | 30.3% |
+      | median | 14.6% | |
+      | mean over all dry windows | 2.07% | 4.47% |
+      | **lift over own baseline** | **9.69x** | 6.77x |
+
+      NEA reads higher at onset, but that is bluntness rather than skill: it is
+      higher *everywhere*. Scale-free, our model raises its own voice nearly ten
+      times when rain is coming, against NEA's under seven. Checking that was
+      the difference between a finding and a misreading.
+
+      **So the model is not blind to onset, and "improve the model" is the wrong
+      framing.** The problem is the base rate: only 1.77% of dry windows are
+      followed by rain, so any threshold that catches most onsets also fires
+      often when nothing happens.
+
+      | warn at | onsets caught | false alarms per catch |
+      |---|---|---|
+      | >= 10% | 63.4% | 7.1 |
+      | >= 15% | 49.3% | 5.8 |
+      | >= 20% | 38.5% | 5.2 |
+      | >= 50% | 8.2% | 3.3 |
+
+      The open question is a product one: which point on that curve, and what
+      the interface says at it. Half of all onsets are preceded by a reading
+      under 15%, so no wording makes those a warning — the honest move may be
+      to say what the number means rather than to promise a warning the data
+      cannot support.
+      `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
 
