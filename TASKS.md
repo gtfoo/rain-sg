@@ -13,14 +13,16 @@ and a one-line task strands the *why*.
       it is asserted, not observed. Data is on disk.
       `from: self · the one honesty claim the UI makes that is not yet earned`
 
-- [ ] **First deploy: the runtime env file is empty.**
-      All five Actions secrets are set and the box is provisioned — key,
-      sudoers, and `rain.service` installed but stopped. `DATA_DIR` is in the
-      unit. The three real secrets (`DATAGOV_API_KEY`, `ONEMAP_EMAIL`,
-      `ONEMAP_PASSWORD`) belong in `/home/deploy/rain-sg-data/env`, created
-      empty at `600 deploy`. `EnvironmentFile=-` means the unit starts anyway
-      and the app fails on its own terms — deliberate, not masked.
-      `from: droplet · MAIL.md · provisioned, 2026-08-31`
+- [ ] **Runtime env file, then search.** The first deploy succeeded and 3004
+      answers; the timer follows. What is left is
+      `/home/deploy/rain-sg-data/env`, still empty — so OneMap search fails and
+      backfill runs at the unauthenticated rate (it timed out at 120s on the
+      first deploy, which is the key's cost made visible). Credentials are the
+      owner's to place; the droplet agent declined on the same principle that
+      keeps deploy keys out of their hands. Verify by comparing byte counts of
+      each value on both sides, not by "does search work" — a mangled value
+      that still authenticates would pass that.
+      `from: droplet · MAIL.md · credentials not mine to move`
 
 - [ ] **GBM across all eight leads.** Beat the linear model at every lead
       measured (-6.3% at 15 min, -0.4% to -0.9% beyond), but only four of eight
@@ -40,6 +42,11 @@ and a one-line task strands the *why*.
       `from: self · observed during the 2025 holdout pull`
 
 ## Done
+
+- [x] First deploy. Commit `4bb5f0e`, fifteen steps green: bundle assembled and
+      shipped, `rain.service` restarted, **3004 answering, bound to loopback
+      only**. The unit came up on an empty env file exactly as designed.
+      `from: self · run under .github/workflows/deploy.yml`
 
 - [x] Provisioning unblocked. The order was circular — the key was held until
       3004 answered, and 3004 could only answer after a deploy that needed the
