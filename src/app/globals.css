@@ -4,15 +4,29 @@
   --ground: #edf1f3; --card: #fff; --ink: #0e1317; --ink-2: #3d4a55; --muted: #78848e;
   --hair: #e2e8ec;
   --r0: #dde6ec; --r1: #a8cadf; --r2: #5ea3cc; --r3: #2b7fb8; --r4: #175a87;
-  --accent: #2b7fb8;
+  --accent: #2b7fb8; --on-accent: #fff;
 }
+/* Dark is declared twice on purpose: once for "follow the system", once for an
+   explicit choice.
+
+   The guard is the load-bearing part. Without :not([data-theme="light"]) the
+   media block and the attribute rule carry equal weight and source order
+   decides — so someone who picks light on a dark-mode phone gets dark anyway,
+   which is exactly the person who bothered to choose. --on-accent exists
+   because #fff on the dark palette's lighter accent is about 2.3:1. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --ground: #080b0e; --card: #12181d; --ink: #e9eef2; --ink-2: #b4c0ca; --muted: #7c8a96;
-    --hair: #212a32;
-    --r0: #1e2830; --r1: #2f5570; --r2: #3e82ae; --r3: #5aaee0; --r4: #8fcdf0;
-    --accent: #5aaee0;
+  :root:not([data-theme="light"]) {
+  --ground: #080b0e; --card: #12181d; --ink: #e9eef2; --ink-2: #b4c0ca; --muted: #7c8a96;
+  --hair: #212a32;
+  --r0: #1e2830; --r1: #2f5570; --r2: #3e82ae; --r3: #5aaee0; --r4: #8fcdf0;
+  --accent: #5aaee0; --on-accent: #08121a;
   }
+}
+:root[data-theme="dark"] {
+  --ground: #080b0e; --card: #12181d; --ink: #e9eef2; --ink-2: #b4c0ca; --muted: #7c8a96;
+  --hair: #212a32;
+  --r0: #1e2830; --r1: #2f5570; --r2: #3e82ae; --r3: #5aaee0; --r4: #8fcdf0;
+  --accent: #5aaee0; --on-accent: #08121a;
 }
 * { box-sizing: border-box; }
 body {
@@ -20,7 +34,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased;
 }
-.wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 52px 20px 20px; }
 .card {
   width: 100%; max-width: 380px; min-height: 520px; background: var(--card);
   border-radius: 22px; padding: 22px 20px 18px; display: flex; flex-direction: column;
@@ -75,3 +89,28 @@ body {
 .hint { font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; }
 .pad { padding-top: 28px; }
 .err { font-size: 0.85rem; color: #c2453b; margin: 14px 0 0; }
+
+/* Pinned outside the card. The card is the product; a display setting is not
+   part of the answer and should not sit inside it. */
+.theme {
+  position: fixed; top: 14px; right: 14px; z-index: 10;
+  display: flex; overflow: hidden;
+  border: 1px solid var(--hair); border-radius: 9px; background: var(--card);
+}
+.theme button {
+  font: inherit; font-size: 0.66rem; padding: 5px 9px;
+  border: 0; background: none; color: var(--muted); cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.theme button:hover { color: var(--ink-2); }
+.theme button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.theme button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Second line in the header: the address for a searched place, "Your location"
+   for a GPS fix. Truncated rather than wrapped — the header is a label, and a
+   two-line address would push the answer down the card. */
+.loc .sub {
+  display: block; margin-top: 2px; max-width: 26ch;
+  font-weight: 400; font-size: 0.7rem; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

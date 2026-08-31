@@ -14,6 +14,7 @@
 
 const TOKEN_URL = "https://www.onemap.gov.sg/api/auth/post/getToken";
 const SEARCH_URL = "https://www.onemap.gov.sg/api/common/elastic/search";
+const REVGEO_URL = "https://www.onemap.gov.sg/api/public/revgeocode";
 
 /** Refresh well before expiry rather than racing the deadline. */
 const REFRESH_MARGIN_MS = 60 * 60 * 1000;
@@ -129,6 +130,40 @@ export async function search(query: string, limit = 5): Promise<Place[]> {
     lat: Number(h.LATITUDE),
     lon: Number(h.LONGITUDE),
   }));
+}
+
+interface RevHit {
+  BUILDINGNAME?: string;
+  ROAD?: string;
+}
+
+/**
+ * The nearest named thing to a coordinate.
+ *
+ * "Your location" is true and tells the reader nothing. If the forecast looks
+ * wrong they cannot tell whether the app looked in the right place, which is
+ * exactly the moment a name earns its keep. Cosmetic, though: every caller must
+ * work without it, because it needs credentials the forecast does not.
+ */
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  const token = await getToken();
+  if (!token) return null;
+
+  const url =
+    `${REVGEO_URL}?location=${lat},${lon}` +
+    `&buffer=500&addressType=All&otherFeatures=N`;
+
+  const res = await fetch(url, { headers: { Authorization: token } });
+  if (!res.ok) throw new Error(`OneMap revgeocode failed: HTTP ${res.status}`);
+
+  const body = (await res.json()) as { GeocodeInfo?: RevHit[] };
+  const hit = body.GeocodeInfo?.[0];
+  if (!hit) return null;
+
+  // OneMap writes an absent field as the string "NIL", so a truthiness check
+  // alone would name somewhere "NIL".
+  const named = (v?: string) => (v && v !== "NIL" ? v : null);
+  return named(hit.BUILDINGNAME) ?? named(hit.ROAD) ?? null;
 }
 
 /** Rough bounds of Singapore, for rejecting coordinates we cannot forecast. */

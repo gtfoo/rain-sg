@@ -94,16 +94,27 @@ export default function Page() {
   const loadForecast = useCallback(async (p: Place) => {
     setBusy(true);
     setError(null);
+    let res: Response;
     try {
-      const res = await fetch(`/api/forecast?lat=${p.lat}&lon=${p.lon}`);
-      if (!res.ok) throw new Error(String(res.status));
-      setForecast(await res.json());
+      res = await fetch(`/api/forecast?lat=${p.lat}&lon=${p.lon}`);
     } catch {
+      // Genuinely unreachable — the only case where "try again" is the advice.
       setForecast(null);
       setError("Can't reach the forecast right now.");
-    } finally {
       setBusy(false);
+      return;
     }
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      // The route explains itself: outside Singapore, or no observations
+      // stored yet. Replacing that with a generic message told the user to
+      // retry something that was never going to work.
+      setForecast(null);
+      setError(body?.error ?? "Can't reach the forecast right now.");
+    } else {
+      setForecast(body);
+    }
+    setBusy(false);
   }, []);
 
   // Search as you type, debounced. Two characters minimum, matching the API.
@@ -138,17 +149,28 @@ export default function Page() {
     setBusy(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const p: Place = {
-          name: "Your location",
-          address: "",
-          postal: null,
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-        };
+        const { latitude: lat, longitude: lon } = pos.coords;
+        const p: Place = { name: "Your location", address: "", postal: null, lat, lon };
         setPlace(p);
         setPlaces([]);
         setQuery("");
         void loadForecast(p);
+
+        // Naming it is a second, slower request, and the forecast must not wait
+        // on it: the answer is the product and the label is decoration. The
+        // guard on lat/lon stops a slow reply overwriting a place the user has
+        // since chosen by hand.
+        void fetch(`/api/reverse?lat=${lat}&lon=${lon}`)
+          .then((r) => r.json())
+          .then((b: { name?: string | null }) => {
+            if (!b?.name) return;
+            setPlace((cur) => (cur && cur.lat === lat && cur.lon === lon
+              ? { ...cur, name: b.name as string, address: "Your location" }
+              : cur));
+          })
+          .catch(() => {
+            // Keeps saying "Your location", which is still true.
+          });
       },
       () => {
         setBusy(false);
@@ -157,6 +179,26 @@ export default function Page() {
       { timeout: 8000, maximumAge: 60_000 },
     );
   }, [loadForecast]);
+
+  // Only ever runs when the browser reports permission ALREADY granted, so
+  // this never raises a prompt on arrival — the one thing that would make the
+  // app feel like it was taking something. Someone who has used it before goes
+  // straight to their own forecast; everyone else sees the search box.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) return;
+    let cancelled = false;
+    navigator.permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((status) => {
+        if (!cancelled && status.state === "granted") useMyLocation();
+      })
+      .catch(() => {
+        // Firefox rejects for some permission names; the button still works.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [useMyLocation]);
 
   const pick = (p: Place) => {
     setPlace(p);
@@ -171,7 +213,10 @@ export default function Page() {
     <main className="wrap">
       <div className="card">
         <header className="top">
-          <div className="loc">{place ? place.name : "Where are you?"}</div>
+          <div className="loc">
+            {place ? place.name : "Where are you?"}
+            {place?.address && <span className="sub">{place.address}</span>}
+          </div>
           {place && (
             <button className="chg" onClick={() => { setPlace(null); setForecast(null); }}>
               Change
