@@ -13,16 +13,6 @@ and a one-line task strands the *why*.
       it is asserted, not observed. Data is on disk.
       `from: self · the one honesty claim the UI makes that is not yet earned`
 
-- [ ] **Runtime env file, then search.** The first deploy succeeded and 3004
-      answers; the timer follows. What is left is
-      `/home/deploy/rain-sg-data/env`, still empty — so OneMap search fails and
-      backfill runs at the unauthenticated rate (it timed out at 120s on the
-      first deploy, which is the key's cost made visible). Credentials are the
-      owner's to place; the droplet agent declined on the same principle that
-      keeps deploy keys out of their hands. Verify by comparing byte counts of
-      each value on both sides, not by "does search work" — a mangled value
-      that still authenticates would pass that.
-      `from: droplet · MAIL.md · credentials not mine to move`
 
 - [ ] **GBM across all eight leads.** Beat the linear model at every lead
       measured (-6.3% at 15 min, -0.4% to -0.9% beyond), but only four of eight
@@ -42,6 +32,14 @@ and a one-line task strands the *why*.
       `from: self · observed during the 2025 holdout pull`
 
 ## Done
+
+- [x] Fully live. Credentials transferred with the owner's authorisation and
+      verified by byte count on both sides (18/12/100), not by "does search
+      work" — search needs no credentials and would have passed a mangled
+      value. Reverse geocoding returns real names; 36 of 36 grid points
+      forecast; nearest gauge 1.9 km in the city centre, which is the store
+      confirming the coverage fix healed it in production.
+      `from: self · 2026-08-31`
 
 - [x] First deploy. Commit `4bb5f0e`, fifteen steps green: bundle assembled and
       shipped, `rain.service` restarted, **3004 answering, bound to loopback
