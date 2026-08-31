@@ -26,12 +26,27 @@ and a one-line task strands the *why*.
       a user would have been warned.
       `from: self · measured on the 2024 holdout`
 
-- [ ] **Windowed rate in the poller's logging.** A rate averaged over a whole
-      run reads 0.48 req/s after a laptop sleep when the true rate is 2.34. On
-      the droplet a hung fetch and a suspended one would look identical.
-      `from: self · observed during the 2025 holdout pull`
-
 ## Done
+
+- [x] Windowed rate, and the task was filed against the wrong program. The
+      defect was never in `/api/poll` — that logs only run duration, computes
+      no rate, and bounds a hung fetch with `curl --max-time 60` under
+      `TimeoutStartSec=90`. It was in `~/rain-data/pull-fast.js`, which divided
+      total requests by wall-clock since launch: a cumulative average that read
+      0.48 req/s after a laptop sleep against a true 2.34, and that can never
+      recover because one stall drags the remainder down. The ETA inherited it
+      (~147 min reported, ~56 true). Both are now windowed over 60s, and a
+      stalled run prints "stalled" rather than a decaying guess.
+
+      **The first version of the fix was wrong and a test caught it**: `mark()`
+      trimmed only on write, so through a five-minute sleep the "windowed" rate
+      still read 2.33 — reproducing the exact failure it replaced. `perSec` now
+      trims at read time. `~/rain-data/rate-test.js` drives the real functions
+      against a controlled clock and asserts 2.34 / 0.00 / 2.33.
+
+      Note: that file lives outside this repo, which is why the task as
+      originally written could never be closed from here.
+      `from: self · observed during the 2025 holdout pull, fixed 2026-08-31`
 
 - [x] Fully live. Credentials transferred with the owner's authorisation and
       verified by byte count on both sides (18/12/100), not by "does search
