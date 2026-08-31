@@ -1,6 +1,10 @@
 name: deploy
 
 on:
+  # Manual trigger. The box holds state the repo does not - the env file, the
+  # unit, the data dir - so "redeploy without a code change" is a real need, and
+  # the alternative is an empty commit that lies about why it exists.
+  workflow_dispatch:
   push:
     branches: [main]
     # paths-ignore deliberately does NOT list scripts/ (the deploy is how
