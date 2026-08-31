@@ -229,6 +229,13 @@ export function forecastAtPoint(
   const ranked = stations
     .map((s) => ({ station: s, km: kmBetween(point, s) }))
     .sort((a, b) => a.km - b.km)
+    // Rank among gauges that are actually REPORTING, not merely nearby. Taking
+    // the k nearest and then discarding the silent ones refuses a forecast for
+    // a point whose four closest gauges happen to be quiet, even with a working
+    // one just past them — measured at 24 of 36 probe points across the island
+    // after a poll stored a partial slot. Distance still decides the order; a
+    // silent gauge simply does not get a vote.
+    .filter((r) => featuresFor(r.station, 0) !== null)
     .slice(0, k);
   if (!ranked.length) return null;
 

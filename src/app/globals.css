@@ -5,6 +5,7 @@
   --hair: #e2e8ec;
   --r0: #dde6ec; --r1: #a8cadf; --r2: #5ea3cc; --r3: #2b7fb8; --r4: #175a87;
   --accent: #2b7fb8; --on-accent: #fff;
+  color-scheme: light;
 }
 /* Dark is declared twice on purpose: once for "follow the system", once for an
    explicit choice.
@@ -20,6 +21,7 @@
   --hair: #212a32;
   --r0: #1e2830; --r1: #2f5570; --r2: #3e82ae; --r3: #5aaee0; --r4: #8fcdf0;
   --accent: #5aaee0; --on-accent: #08121a;
+  color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
@@ -27,6 +29,7 @@
   --hair: #212a32;
   --r0: #1e2830; --r1: #2f5570; --r2: #3e82ae; --r3: #5aaee0; --r4: #8fcdf0;
   --accent: #5aaee0; --on-accent: #08121a;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body {
@@ -59,6 +62,12 @@ body {
 .geo { align-self: flex-start; }
 .results { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
 .results button {
+  /* `font: inherit` does NOT carry colour, and a <button> does not inherit it:
+     the UA sets `color: buttontext`. With no color-scheme declared that
+     resolved to black on the dark card — measured at 1.17:1, which is text you
+     cannot read. Both halves of that are fixed; this line is the one that
+     matters if the other is ever removed. */
+  color: inherit;
   width: 100%; text-align: left; background: none; border: 0; font: inherit; cursor: pointer;
   padding: 9px 4px; border-bottom: 1px solid var(--hair); display: flex; flex-direction: column;
 }

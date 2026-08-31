@@ -14,7 +14,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { ENDPOINTS, fetchEndpoint, latestTimestamp, slotKey } from "@/lib/datagov";
-import { hasRaw, saveRaw, pruneRaw } from "@/lib/store";
+import type { RealtimePage } from "@/lib/datagov";
+import { readRaw, saveRaw, pruneRaw } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,6 +36,22 @@ function isLoopback(req: NextRequest): boolean {
     (req.headers.get("x-real-ip") ?? undefined);
   if (!addr) return true;
   return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
+}
+
+/**
+ * How much is actually in a payload: station readings plus forecast entries.
+ *
+ * Deliberately not file size — a gzip of half the gauges is not obviously
+ * smaller than a gzip of all of them, and that is exactly the case that has to
+ * be caught.
+ */
+function coverage(pages: RealtimePage[]): number {
+  let n = 0;
+  for (const p of pages) {
+    for (const r of p.readings ?? []) n += r.data.length;
+    for (const it of p.items ?? []) n += it.forecasts.length;
+  }
+  return n;
 }
 
 export async function GET(req: NextRequest) {
@@ -58,9 +75,18 @@ export async function GET(req: NextRequest) {
       const slot = slotKey(latest);
 
       // Idempotent: the slot key comes from the reading's own timestamp, so a
-      // double fire lands on the same name. Skipping the write also keeps the
-      // 5-minute timer cheap when the upstream data has not advanced yet.
-      if (hasRaw(api, slot)) {
+      // double fire lands on the same name, and re-storing identical data is
+      // wasted work on a 5-minute timer.
+      //
+      // But "the file exists" is the wrong test, and it cost us a day. A run
+      // that was killed part-way left a slot holding a subset of the gauges,
+      // and because the name was taken no later poll ever replaced it — the
+      // island silently kept forecasting from whichever gauges happened to be
+      // in that file. Compare what is actually IN the payload instead, so a
+      // thinner file is always replaced by a fuller one and an equal one is
+      // still skipped.
+      const stored = readRaw<RealtimePage[]>(api, slot);
+      if (stored && coverage(stored) >= coverage(pages)) {
         results[api] = `${slot} already stored`;
         continue;
       }
