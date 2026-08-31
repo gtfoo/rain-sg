@@ -13,15 +13,14 @@ and a one-line task strands the *why*.
       it is asserted, not observed. Data is on disk.
       `from: self · the one honesty claim the UI makes that is not yet earned`
 
-- [ ] **GitHub Actions secrets, then first deploy.**
-      `DROPLET_SSH_KEY` is credential material and is the owner's to set.
-      Config values (host, user, port, app dir) can be set with `gh`.
-      Nothing deploys until something answers on 3004 — the droplet agent is
-      deliberately holding the Caddy host and systemd timer until then.
-      `from: droplet · MAIL.md · allocated-not-provisioned`
-
-- [ ] **DNS A record** `rain.gtfoo.com` -> `167.71.196.128`. Ours to create.
-      `from: droplet · MAIL.md`
+- [ ] **First deploy: the runtime env file is empty.**
+      All five Actions secrets are set and the box is provisioned — key,
+      sudoers, and `rain.service` installed but stopped. `DATA_DIR` is in the
+      unit. The three real secrets (`DATAGOV_API_KEY`, `ONEMAP_EMAIL`,
+      `ONEMAP_PASSWORD`) belong in `/home/deploy/rain-sg-data/env`, created
+      empty at `600 deploy`. `EnvironmentFile=-` means the unit starts anyway
+      and the app fails on its own terms — deliberate, not masked.
+      `from: droplet · MAIL.md · provisioned, 2026-08-31`
 
 - [ ] **GBM across all eight leads.** Beat the linear model at every lead
       measured (-6.3% at 15 min, -0.4% to -0.9% beyond), but only four of eight
@@ -41,6 +40,18 @@ and a one-line task strands the *why*.
       `from: self · observed during the 2025 holdout pull`
 
 ## Done
+
+- [x] Provisioning unblocked. The order was circular — the key was held until
+      3004 answered, and 3004 could only answer after a deploy that needed the
+      key. Splitting the items by *public or running?* freed the three private
+      ones. Run `33317433563` supplied the evidence: every gate passed, and it
+      failed at the handshake for the one expected reason.
+      `from: self · droplet acted on it same day`
+
+- [x] There is no DNS step. `*.gtfoo.com` is a wildcard, so `rain.gtfoo.com`
+      resolved before it was asked for. Six apps were told to create an A
+      record; none did, and all six got certificates. Guide corrected upstream.
+      `from: droplet · MAIL.md · the DNS you are waiting on does not exist`
 
 - [x] Fresh holdout. 60 stratified days of 2025, untouched by any design
       decision: 9.4% over NEA overall, 35.4% at 15 min, 14.7% on "when will it
