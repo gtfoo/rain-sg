@@ -107,11 +107,16 @@ export interface VerificationRow {
   /** slot the forecast was issued at */
   issued: string;
   stationId: string;
-  /** 0..7, i.e. +15 .. +120 minutes */
-  lead: number;
-  p: number;
-  /** filled in later, once the target window is observed */
-  outcome?: 0 | 1;
+  /**
+   * All eight leads at once, +15 .. +120 minutes, as integer ten-thousandths.
+   *
+   * One row per station rather than per station-and-lead, and integers rather
+   * than floats, because this file is written every 15 minutes for 88 stations
+   * and is never pruned: the obvious shape costs about 900 MB a year on a 24 GB
+   * disk shared by six apps, and this one costs about 230 MB. 1e-4 is far finer
+   * than any calibration question can resolve.
+   */
+  p: number[];
 }
 
 export function appendVerification(rows: VerificationRow[]): void {

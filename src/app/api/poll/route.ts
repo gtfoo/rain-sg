@@ -15,7 +15,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ENDPOINTS, fetchEndpoint, latestTimestamp, slotKey } from "@/lib/datagov";
 import type { RealtimePage } from "@/lib/datagov";
-import { readRaw, saveRaw, pruneRaw } from "@/lib/store";
+import { readRaw, saveRaw, pruneRaw, appendVerification } from "@/lib/store";
+import type { VerificationRow } from "@/lib/store";
+import modelJson from "@/model/model.json";
+import type { Model } from "@/lib/forecast";
+import { predict } from "@/lib/forecast";
+import { loadObservations, makeFeaturesFor } from "@/lib/observations";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,6 +57,39 @@ function coverage(pages: RealtimePage[]): number {
     for (const it of p.items ?? []) n += it.forecasts.length;
   }
   return n;
+}
+
+const model = modelJson as unknown as Model;
+
+/**
+ * Record what we would have said, for every station, at this moment.
+ *
+ * Written here rather than in /api/forecast on purpose. A log driven by user
+ * requests is a biased sample — it over-represents wherever people happen to
+ * live and whenever they happen to look, and a reliability diagram built from
+ * it would describe the audience rather than the model. Polling writes the same
+ * rows on a dry Tuesday at 4am as during a thunderstorm.
+ *
+ * Outcomes are not written back. They are recoverable by joining `issued` and
+ * `lead` against the raw store, and rewriting an append-only file every 15
+ * minutes to fill them in would be the more fragile of the two designs.
+ */
+function recordForecasts(slot: string): number {
+  const obs = loadObservations(4);
+  if (!obs.stations.length || !obs.observedAt) return 0;
+  const featuresFor = makeFeaturesFor(model, obs);
+  const rows: VerificationRow[] = [];
+  for (const st of obs.stations) {
+    const p: number[] = [];
+    for (let lead = 0; lead < model.nlead; lead++) {
+      const x = featuresFor(st, lead);
+      if (!x) break;                       // station silent: no row at all
+      p.push(Math.round(predict(model, x, lead) * 10_000));
+    }
+    if (p.length === model.nlead) rows.push({ issued: slot, stationId: st.id, p });
+  }
+  appendVerification(rows);
+  return rows.length;
 }
 
 export async function GET(req: NextRequest) {
@@ -99,6 +137,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Only once the rainfall slot has actually advanced: re-recording the same
+  // forecast three times for one 15-minute window would triple-count it in any
+  // reliability diagram built from this file.
+  let recorded = 0;
+  const rainSlot = results["rainfall"]?.match(/^(\S+) \(/)?.[1];
+  if (rainSlot) {
+    try {
+      recorded = recordForecasts(rainSlot);
+    } catch (err) {
+      // Verification is a nice-to-have; the poll's job is to store data.
+      results["verification"] = `failed: ${(err as Error).message}`;
+    }
+  }
+
   // Raw is kept for re-ingest after a schema change; 30 days is ample and the
   // archive is re-downloadable via ?date= if we ever need further back.
   const pruned = pruneRaw(30);
@@ -114,6 +166,7 @@ export async function GET(req: NextRequest) {
       failed,
       pruned,
       ms: Date.now() - started,
+      recorded,
       endpoints: results,
     },
     { status },

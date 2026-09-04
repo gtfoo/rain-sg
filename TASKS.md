@@ -7,10 +7,17 @@ and a one-line task strands the *why*.
 ## Open
 
 - [ ] **Reliability diagram before dropping the "uncalibrated" label.**
-      The interface currently says "estimates uncalibrated" in the footer, and
-      that stays until we can show 70% has meant 70%. Calibration is applied
-      (Platt, per lead, per island-wetness band) but has never been *plotted* —
-      it is asserted, not observed. Data is on disk.
+      The footer says "estimates uncalibrated" and that stays until we can show
+      70% has meant 70%. Calibration is applied (Platt, per lead, per
+      island-wetness band) but has never been *plotted* — asserted, not
+      observed.
+
+      Unblocked as of 2026-09-04: `appendVerification` existed but nothing ever
+      called it, so the log was empty four days after going live. The poller now
+      records all 88 stations x 8 leads on every slot that advances. At 216 MB
+      a year it can run indefinitely; the diagram needs enough rain to have
+      fallen, which the first four days did not supply (0.19% wet, verified
+      against NEA's own archive).
       `from: self · the one honesty claim the UI makes that is not yet earned`
 
 

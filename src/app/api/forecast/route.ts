@@ -4,9 +4,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import modelJson from "@/model/model.json";
-import type { Model, Station } from "@/lib/forecast";
-import { buildFeatures, forecastAtPoint, kmBetween } from "@/lib/forecast";
-import { loadObservations, neighboursOf, areaFor } from "@/lib/observations";
+import type { Model } from "@/lib/forecast";
+import { forecastAtPoint, kmBetween } from "@/lib/forecast";
+import { loadObservations, makeFeaturesFor } from "@/lib/observations";
 import { inSingapore } from "@/lib/onemap";
 
 export const runtime = "nodejs";
@@ -41,21 +41,7 @@ export async function GET(req: NextRequest) {
   const hour = sgt.getUTCHours();
   const month = sgt.getUTCMonth();
 
-  const featuresFor = (s: Station, lead: number) =>
-    buildFeatures(model, {
-      station: s,
-      history: obs.history,
-      wind: obs.wind,
-      islandWet: obs.islandWet,
-      islandMm: obs.islandMm,
-      neighbours: neighboursOf(s, obs.stations),
-      forecast: (() => {
-        const area = areaFor(s, obs.areas);
-        return area ? (obs.forecastByArea.get(area) ?? null) : null;
-      })(),
-      hour,
-      month,
-    }, lead);
+  const featuresFor = makeFeaturesFor(model, obs);
 
   const out = forecastAtPoint(model, { lat, lon }, featuresFor, obs.stations, 4);
   if (!out) {

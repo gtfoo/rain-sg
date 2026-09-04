@@ -9,7 +9,8 @@
 import { readRaw, slotsFor } from "./store";
 import type { RealtimePage } from "./datagov";
 import type { Station, Window, WindVector, AreaForecast } from "./forecast";
-import { kmBetween } from "./forecast";
+import { kmBetween, buildFeatures } from "./forecast";
+import type { Model } from "./forecast";
 
 /** NEA publishes forecast text; the model is keyed on codes. */
 const TEXT_TO_CODE: Record<string, string> = {
@@ -176,6 +177,36 @@ export function loadObservations(lags = 4): Observations {
 function toSlot(iso: string): string {
   const mi = String(Math.floor(Number(iso.slice(14, 16)) / 15) * 15).padStart(2, "0");
   return `${iso.slice(0, 10)}T${iso.slice(11, 13)}${mi}`;
+}
+
+/**
+ * The model's view of one station, at one lead.
+ *
+ * Lives here rather than in a route because two callers need exactly the same
+ * vector and a second copy would drift: /api/forecast serves it, and /api/poll
+ * records it for verification. A forecast we scored differently from the one we
+ * served would make the reliability diagram a measurement of the copy.
+ */
+export function makeFeaturesFor(model: Model, obs: Observations) {
+  // SGT is UTC+8 year-round, so this is exact arithmetic rather than a guess.
+  const sgt = new Date(Date.now() + 8 * 3600 * 1000);
+  const hour = sgt.getUTCHours();
+  const month = sgt.getUTCMonth();
+  return (s: Station, lead: number) =>
+    buildFeatures(model, {
+      station: s,
+      history: obs.history,
+      wind: obs.wind,
+      islandWet: obs.islandWet,
+      islandMm: obs.islandMm,
+      neighbours: neighboursOf(s, obs.stations),
+      forecast: (() => {
+        const area = areaFor(s, obs.areas);
+        return area ? (obs.forecastByArea.get(area) ?? null) : null;
+      })(),
+      hour,
+      month,
+    }, lead);
 }
 
 /** Neighbour lists at the radii the model expects. */
