@@ -76,7 +76,11 @@ fi
 log "bound to loopback only"
 
 # Prime the store so the first visitor is not served an empty forecast.
-curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3004/api/backfill?hours=2" || \
+# 120s was not enough and the prime silently did not happen on the first
+# deploy. Backfill fetches whole-day archives regardless of hours, and it now
+# merges into existing slots as well, so give it room; ssh-action allows 20
+# minutes for the whole script.
+curl -fsS -o /dev/null --max-time 420 "http://127.0.0.1:3004/api/backfill?hours=2" || \
   log "warning: backfill did not complete (app is up regardless)"
 
 log "deployed"

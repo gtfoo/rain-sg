@@ -53,6 +53,70 @@ export interface RealtimePage {
   paginationToken?: string;
 }
 
+/**
+ * How much is actually in a payload: station readings plus forecast entries.
+ *
+ * Deliberately not file size — a gzip of half the gauges is not obviously
+ * smaller than a gzip of all of them, and that is exactly the case that has to
+ * be caught.
+ */
+export function coverage(pages: RealtimePage[]): number {
+  let n = 0;
+  for (const p of pages) {
+    for (const r of p.readings ?? []) n += r.data.length;
+    for (const it of p.items ?? []) n += it.forecasts.length;
+  }
+  return n;
+}
+
+/**
+ * Union a freshly fetched page set with whatever is already stored for the slot.
+ *
+ * A live call returns only the newest 5-minute reading, but a slot is 15 minutes
+ * wide, so three polls land in each one. Keeping only the first threw the other
+ * two away — and observations.ts has always been written to expect all three:
+ * it sums millimetres across the readings in a window and ORs the wet flag.
+ *
+ * Two consequences, and the second is the worse one. Brief showers that fell in
+ * the unsampled ten minutes were invisible: our store showed 0.19% of windows
+ * wet on 2026-09-01 where the archive shows 0.41%. And millimetres were about a
+ * third of the true window total, while the model was TRAINED on the full sum —
+ * a train/serve skew in the intensity features, silent in every metric.
+ */
+export function mergeSlot(stored: RealtimePage[], fresh: RealtimePage[]): RealtimePage[] {
+  const stations = new Map<string, StationMeta>();
+  const areas = new Map<string, NonNullable<RealtimePage["area_metadata"]>[number]>();
+  const readings = new Map<string, Reading>();
+  const items = new Map<string, NonNullable<RealtimePage["items"]>[number]>();
+
+  const absorb = (pages: RealtimePage[]) => {
+    for (const p of pages) {
+      for (const st of p.stations ?? []) stations.set(st.id, st);
+      for (const a of p.area_metadata ?? []) areas.set(a.name, a);
+      for (const r of p.readings ?? []) {
+        // Same timestamp seen twice: keep whichever carries more gauges, so a
+        // partial fetch can never replace a complete one.
+        const prev = readings.get(r.timestamp);
+        if (!prev || r.data.length > prev.data.length) readings.set(r.timestamp, r);
+      }
+      for (const it of p.items ?? []) {
+        const key = `${it.timestamp ?? it.update_timestamp ?? ""}|${it.valid_period.start}`;
+        items.set(key, it);
+      }
+    }
+  };
+  absorb(stored);
+  absorb(fresh);
+
+  const page: RealtimePage = {};
+  if (stations.size) page.stations = [...stations.values()];
+  if (areas.size) page.area_metadata = [...areas.values()];
+  if (readings.size)
+    page.readings = [...readings.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  if (items.size) page.items = [...items.values()];
+  return [page];
+}
+
 function request(url: string): Promise<{ status: number; body: string }> {
   const key = process.env.DATAGOV_API_KEY?.trim();
   // Degrade rather than fail when unset: the endpoints still work without a

@@ -15,8 +15,8 @@
  * Loopback-only and manual: the timer must never be able to trigger this.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { ENDPOINTS, fetchEndpoint, slotKey, type RealtimePage } from "@/lib/datagov";
-import { hasRaw, saveRaw } from "@/lib/store";
+import { ENDPOINTS, fetchEndpoint, slotKey, mergeSlot, coverage, type RealtimePage } from "@/lib/datagov";
+import { readRaw, saveRaw } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,14 +79,22 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      let n = 0;
+      let n = 0, healed = 0;
       for (const [slot, pages] of bySlot) {
-        if (hasRaw(api, slot)) continue;   // never overwrite a live poll
-        saveRaw(api, slot, pages);
-        n++;
+        // Used to skip any slot a live poll had already written. That was too
+        // blunt: a live call returns one 5-minute reading and the archive has
+        // all three, so "never overwrite" also meant "never repair", and a week
+        // of slots stayed at a third of the rain they should have held.
+        // Merging keeps the live data and adds whatever the archive knows that
+        // it does not.
+        const stored = readRaw<RealtimePage[]>(api, slot);
+        const toWrite = stored ? mergeSlot(stored, pages) : pages;
+        if (stored && coverage(toWrite) <= coverage(stored)) continue;
+        saveRaw(api, slot, toWrite);
+        if (stored) healed++; else n++;
         wrote++;
       }
-      results[api] = `${n} slot(s) written, ${bySlot.size} seen`;
+      results[api] = `${n} written, ${healed} healed, ${bySlot.size} seen`;
     } catch (err) {
       results[api] = `failed: ${(err as Error).message}`;
     }

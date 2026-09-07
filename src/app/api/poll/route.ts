@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ENDPOINTS, fetchEndpoint, latestTimestamp, slotKey } from "@/lib/datagov";
 import type { RealtimePage } from "@/lib/datagov";
+import { mergeSlot, coverage } from "@/lib/datagov";
 import { readRaw, saveRaw, pruneRaw, appendVerification } from "@/lib/store";
 import type { VerificationRow } from "@/lib/store";
 import modelJson from "@/model/model.json";
@@ -41,22 +42,6 @@ function isLoopback(req: NextRequest): boolean {
     (req.headers.get("x-real-ip") ?? undefined);
   if (!addr) return true;
   return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
-}
-
-/**
- * How much is actually in a payload: station readings plus forecast entries.
- *
- * Deliberately not file size — a gzip of half the gauges is not obviously
- * smaller than a gzip of all of them, and that is exactly the case that has to
- * be caught.
- */
-function coverage(pages: RealtimePage[]): number {
-  let n = 0;
-  for (const p of pages) {
-    for (const r of p.readings ?? []) n += r.data.length;
-    for (const it of p.items ?? []) n += it.forecasts.length;
-  }
-  return n;
 }
 
 const model = modelJson as unknown as Model;
@@ -101,6 +86,10 @@ export async function GET(req: NextRequest) {
   const results: Record<string, string> = {};
   let wrote = 0;
   let failed = 0;
+  // Set only when a rainfall slot is seen for the FIRST time. A slot is now
+  // written up to three times as it fills, and recording verification on each
+  // would triple-count one window in any reliability diagram built from it.
+  let newRainSlot: string | null = null;
 
   for (const api of ENDPOINTS) {
     try {
@@ -112,24 +101,26 @@ export async function GET(req: NextRequest) {
       }
       const slot = slotKey(latest);
 
-      // Idempotent: the slot key comes from the reading's own timestamp, so a
-      // double fire lands on the same name, and re-storing identical data is
-      // wasted work on a 5-minute timer.
+      // A slot accumulates. Three polls fall inside each 15-minute window and
+      // each carries a different 5-minute reading, so the slot is only complete
+      // once they have all been merged in.
       //
-      // But "the file exists" is the wrong test, and it cost us a day. A run
-      // that was killed part-way left a slot holding a subset of the gauges,
-      // and because the name was taken no later poll ever replaced it — the
-      // island silently kept forecasting from whichever gauges happened to be
-      // in that file. Compare what is actually IN the payload instead, so a
-      // thinner file is always replaced by a fuller one and an equal one is
-      // still skipped.
+      // "The file exists" was the wrong test and it cost us a day: a run killed
+      // part-way left a slot holding a subset of the gauges, and because the
+      // name was taken no later poll replaced it. Comparing coverage fixes that
+      // and is still the test here — merging can only ever add, so a fetch that
+      // contributes nothing leaves coverage unchanged and is skipped.
       const stored = readRaw<RealtimePage[]>(api, slot);
-      if (stored && coverage(stored) >= coverage(pages)) {
-        results[api] = `${slot} already stored`;
+      const toWrite = stored ? mergeSlot(stored, pages) : pages;
+      if (stored && coverage(toWrite) <= coverage(stored)) {
+        results[api] = `${slot} already complete`;
         continue;
       }
-      const { bytes } = saveRaw(api, slot, pages);
-      results[api] = `${slot} (${(bytes / 1024).toFixed(1)} KB)`;
+      if (api === "rainfall" && !stored) newRainSlot = slot;
+      const { bytes } = saveRaw(api, slot, toWrite);
+      results[api] = stored
+        ? `${slot} merged (${(bytes / 1024).toFixed(1)} KB)`
+        : `${slot} (${(bytes / 1024).toFixed(1)} KB)`;
       wrote++;
     } catch (err) {
       failed++;
@@ -137,14 +128,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Only once the rainfall slot has actually advanced: re-recording the same
-  // forecast three times for one 15-minute window would triple-count it in any
-  // reliability diagram built from this file.
   let recorded = 0;
-  const rainSlot = results["rainfall"]?.match(/^(\S+) \(/)?.[1];
-  if (rainSlot) {
+  if (newRainSlot) {
     try {
-      recorded = recordForecasts(rainSlot);
+      recorded = recordForecasts(newRainSlot);
     } catch (err) {
       // Verification is a nice-to-have; the poll's job is to store data.
       results["verification"] = `failed: ${(err as Error).message}`;
