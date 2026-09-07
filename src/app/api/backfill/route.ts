@@ -39,17 +39,25 @@ function sgtDate(offsetDays = 0): string {
 export async function GET(req: NextRequest) {
   if (!isLoopback(req)) return new NextResponse("Not found", { status: 404 });
 
-  const hours = Math.min(12, Math.max(1, Number(req.nextUrl.searchParams.get("hours") ?? 2)));
+  // 26 rather than 12 so one nightly run can cover a whole previous day with
+  // an hour of overlap on either side. Still bounded: the work scales with
+  // the number of SGT dates spanned, which this can never push past three.
+  const hours = Math.min(26, Math.max(1, Number(req.nextUrl.searchParams.get("hours") ?? 2)));
   const cutoffMs = Date.now() - hours * 3600_000;
   const results: Record<string, string> = {};
   let wrote = 0;
 
   for (const api of ENDPOINTS) {
     try {
-      // Today, plus yesterday when the window crosses midnight.
-      const days = [sgtDate(0)];
-      const sgtNow = new Date(Date.now() + 8 * 3600_000);
-      if (sgtNow.getUTCHours() < hours) days.push(sgtDate(1));
+      // Every SGT date the window touches, walking back from today. The old
+      // version added yesterday only, which silently truncated any window
+      // longer than the current hour-of-day.
+      const days: string[] = [];
+      for (let back = 0; back <= 2; back++) {
+        const day = sgtDate(back);
+        days.push(day);
+        if (Date.parse(`${day}T00:00:00+08:00`) <= cutoffMs) break;
+      }
 
       const bySlot = new Map<string, RealtimePage[]>();
       for (const day of days) {
