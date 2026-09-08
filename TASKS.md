@@ -6,6 +6,31 @@ and a one-line task strands the *why*.
 
 ## Open
 
+- [ ] **Nothing reads the verification log.** The poller has recorded ~600 KB a
+      day since 2026-09-04 and no code scores it — I shipped the writer without
+      the reader. This is what turns the collected data into "when we said 70%,
+      it rained X% of the time", and it blocks the reliability diagram below.
+      Wants a script in the repo rather than analysis that lives only in a chat.
+      `from: self · created the gap on 2026-09-04, noticed 2026-09-07`
+
+- [ ] **Wind is 27% complete while the day is running.** The model was trained
+      on ~15 wind readings per 15-minute window; the live endpoint only advances
+      every 4-6 minutes, so polling supplies 3-4 and no rate fixes it. The
+      nightly backfill takes the stored record to 99.8%, but a forecast served
+      at 3pm used the thin version. Measure how far the four wind features
+      actually move between a 3-sample and a 15-sample window mean before
+      deciding whether this needs anything at all.
+      `from: self · measured 2026-09-08, live endpoint vs archive`
+
+- [ ] **A missing slot silently shifts the lag features.** `loadObservations`
+      takes the four newest stored slots as [now, -15, -30, -45] without
+      checking they are consecutive, so after a gap "15 minutes ago" is really
+      30. `slotMinutes` already exists in that file to compute true offsets and
+      is only used for the forecast join. One gap in 681 slots so far, so the
+      effect is small — but it is the "missing is not dry" failure again:
+      absence treated as continuity, with nothing logged.
+      `from: self · found via the 2026-09-02T0345 gap`
+
 - [ ] **Reliability diagram before dropping the "uncalibrated" label.**
       The footer says "estimates uncalibrated" and that stays until we can show
       70% has meant 70%. Calibration is applied (Platt, per lead, per
