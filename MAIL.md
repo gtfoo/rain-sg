@@ -22,3 +22,5 @@ mail only, and processed letters move to `MAIL-ARCHIVE.md`.
 ---
 
 *Empty — processed to `MAIL-ARCHIVE.md`, 2026-08-31.*
+
+*Empty — processed to `MAIL-ARCHIVE.md`, 2026-09-08.*
