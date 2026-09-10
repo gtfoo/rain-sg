@@ -27,6 +27,22 @@ interface Forecast {
 const LEAD_MIN = [15, 30, 45, 60, 75, 90, 105, 120];
 
 /**
+ * "45 minutes" reads fine; "105 minutes" makes the reader do arithmetic. The
+ * leads are a fixed set, so this is a lookup rather than a formatter.
+ */
+const WHEN: Record<number, string> = {
+  15: "15 minutes", 30: "30 minutes", 45: "45 minutes",
+  60: "1 hour", 75: "1¼ hours", 90: "1½ hours",
+  105: "1¾ hours", 120: "2 hours",
+};
+
+/** The same times, short, because the headline is set at 2.25rem. */
+const WHEN_SHORT: Record<number, string> = {
+  15: "15 min", 30: "30 min", 45: "45 min",
+  60: "1 hr", 75: "1¼ hr", 90: "1½ hr", 105: "1¾ hr", 120: "2 hr",
+};
+
+/**
  * The headline. This is the product — a sentence, not a chart.
  *
  * Two different questions depending on state: dry means "will it rain?", wet
@@ -61,15 +77,23 @@ function verdict(f: Forecast): { head: string; detail: string } {
   }
   // First lead that crosses a threshold worth acting on.
   const onset = f.p.findIndex((p) => p >= 0.3);
+  // Both details name the same thing: the highest chance of rain in the next
+  // two hours, and when it falls.
+  //
+  // This used to read "Heaviest around 31% near 45 minutes", which was wrong in
+  // the way that matters. "Heaviest" describes intensity — how hard it rains —
+  // while 31% is a probability, and this model does not forecast intensity at
+  // all. It also never said a chance OF what, or from WHEN. Three ambiguities
+  // and one outright mis-signal, in six words.
   if (onset === -1) {
     return {
       head: "Probably dry",
-      detail: `Around ${peakPct}% at most, near ${LEAD_MIN[peak]} minutes from now.`,
+      detail: `Highest chance of rain is about ${peakPct}%, around ${WHEN[LEAD_MIN[peak]]} from now.`,
     };
   }
   return {
-    head: `Rain likely\nin ~${LEAD_MIN[onset]} min`,
-    detail: `Heaviest around ${peakPct}% near ${LEAD_MIN[peak]} minutes.`,
+    head: `Rain likely\nin ~${WHEN_SHORT[LEAD_MIN[onset]]}`,
+    detail: `Highest chance is about ${peakPct}%, around ${WHEN[LEAD_MIN[peak]]} from now.`,
   };
 }
 
@@ -276,6 +300,13 @@ export default function Page() {
               <div className="axis">
                 <span>NOW</span><span>1 HR</span><span>2 HR</span>
               </div>
+              {/*
+                The bars carry bare percentages and nothing on the card said
+                what they were percentages OF. Each is one 15-minute window, so
+                a reader taking 31% as "31% chance in the next two hours" reads
+                it as far lower than it is.
+              */}
+              <p className="legend">Chance of rain in each 15 minutes</p>
             </section>
 
             <footer className="foot">

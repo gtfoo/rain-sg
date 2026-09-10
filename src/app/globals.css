@@ -123,3 +123,10 @@ body {
   font-weight: 400; font-size: 0.7rem; color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* Says what the bars are percentages of. Small, but the card was showing bare
+   numbers with no unit stated anywhere on it. */
+.legend {
+  margin: 6px 0 0; font-size: 0.62rem; color: var(--muted);
+  letter-spacing: 0.02em; text-align: center;
+}
