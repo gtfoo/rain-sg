@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import modelJson from "@/model/model.json";
 import type { Model } from "@/lib/forecast";
-import { forecastAtPoint, kmBetween } from "@/lib/forecast";
+import { forecastAtPoint, cumulative, kmBetween } from "@/lib/forecast";
 import { loadObservations, makeFeaturesFor } from "@/lib/observations";
 import { inSingapore } from "@/lib/onemap";
 
@@ -61,6 +61,10 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     p: out.p,
+    // Chance of ANY rain by each horizon. Sent from here rather than
+    // derived on the client, because turning eight per-window numbers
+    // into this one needs a calibration that lives in the model file.
+    cum: cumulative(model, out.p),
     spread: out.spread,
     rainingNow,
     nearestKm: out.nearestKm,

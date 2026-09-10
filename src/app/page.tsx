@@ -13,6 +13,8 @@ interface Place {
 interface Forecast {
   /** probability per lead, +15 .. +120 min */
   p: number[];
+  /** chance of ANY rain by +15 .. +120 min — cumulative, not per window */
+  cum: number[];
   /** low/high across contributing gauges — where they disagree, so should we */
   spread: Array<{ lo: number; hi: number }>;
   /** whether it is raining at the location right now */
@@ -51,8 +53,6 @@ const WHEN_SHORT: Record<number, string> = {
  * so the app should notice which you are in rather than making you ask.
  */
 function verdict(f: Forecast): { head: string; detail: string } {
-  const pct = (i: number) => Math.round(f.p[i] * 100);
-
   if (f.rainingNow) {
     // First lead where it more likely than not has stopped.
     const stops = f.p.findIndex((p) => p < 0.5);
@@ -69,31 +69,47 @@ function verdict(f: Forecast): { head: string; detail: string } {
     };
   }
 
-  const peak = f.p.reduce((best, p, i) => (p > f.p[best] ? i : best), 0);
-  const peakPct = pct(peak);
-
-  if (peakPct < 15) {
-    return { head: "Dry", detail: "Nothing on the way for the next two hours." };
-  }
-  // First lead that crosses a threshold worth acting on.
-  const onset = f.p.findIndex((p) => p >= 0.3);
-  // Both details name the same thing: the highest chance of rain in the next
-  // two hours, and when it falls.
+  // Everything below is answered from the CUMULATIVE numbers — "will it rain in
+  // the next hour" — rather than from the tallest single 15-minute bar.
   //
-  // This used to read "Heaviest around 31% near 45 minutes", which was wrong in
-  // the way that matters. "Heaviest" describes intensity — how hard it rains —
-  // while 31% is a probability, and this model does not forecast intensity at
-  // all. It also never said a chance OF what, or from WHEN. Three ambiguities
-  // and one outright mis-signal, in six words.
-  if (onset === -1) {
+  // The bar was the wrong thing to lead with. A reader takes "31%" as their
+  // chance of getting wet, but it was the chance for one quarter-hour in
+  // isolation, so the real risk over the walk they were deciding about was
+  // higher than the headline number. Two people asked what it meant, which is
+  // the sign that no rewording of it would have been enough.
+  const within = (mins: number) => f.cum[LEAD_MIN.indexOf(mins)];
+  const hour = within(60), twoHours = within(120);
+  const pc = (x: number) => Math.round(x * 100);
+
+  // When it would start: the first window worth naming, else the tallest.
+  const peak = f.p.reduce((best, p, i) => (p > f.p[best] ? i : best), 0);
+  const onset = f.p.findIndex((p) => p >= 0.3);
+  const startsIn = WHEN_SHORT[LEAD_MIN[onset === -1 ? peak : onset]];
+
+  if (twoHours < 0.1) {
+    return { head: "Dry", detail: "Rain unlikely for the next two hours." };
+  }
+  if (hour >= 0.75) {
     return {
-      head: "Probably dry",
-      detail: `Highest chance of rain is about ${peakPct}%, around ${WHEN[LEAD_MIN[peak]]} from now.`,
+      head: "Rain coming",
+      detail: `About ${pc(hour)}% chance within the hour — likely to start in ~${startsIn}.`,
+    };
+  }
+  if (hour >= 0.35) {
+    return {
+      head: `Rain likely\nin ~${startsIn}`,
+      detail: `About ${pc(hour)}% chance of rain within the hour.`,
+    };
+  }
+  if (twoHours >= 0.25 || hour >= 0.2) {
+    return {
+      head: "Rain possible",
+      detail: `About ${pc(hour)}% within the hour, ${pc(twoHours)}% within two.`,
     };
   }
   return {
-    head: `Rain likely\nin ~${WHEN_SHORT[LEAD_MIN[onset]]}`,
-    detail: `Highest chance is about ${peakPct}%, around ${WHEN[LEAD_MIN[peak]]} from now.`,
+    head: "Probably dry",
+    detail: `About ${pc(twoHours)}% chance of rain in the next two hours.`,
   };
 }
 

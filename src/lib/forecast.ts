@@ -219,6 +219,38 @@ export interface PointForecast {
   contributors: Array<{ station: Station; km: number }>;
 }
 
+/**
+ * "What is the chance of ANY rain in the next N minutes?"
+ *
+ * The model emits eight per-window probabilities. Chaining them with
+ * `1 - prod(1-p)` assumes rain in one 15-minute window says nothing about the
+ * next, which is the reverse of true — rain persists — so the product rule
+ * overstates, and worse as the horizon grows. Measured on the 2025 holdout it
+ * reads 17.8% at two hours where the truth is 10.9%, and its top confidence
+ * band says 77.8% for something that happens 56% of the time. Shipping that
+ * would have made the app cry wolf exactly when it sounded most certain.
+ *
+ * The chained figure is still monotone in the truth, so a two-parameter Platt
+ * per horizon recovers it. Fitted on even days of the holdout and scored on the
+ * odd ones: 75.6% predicted against 71.2% observed in that same band.
+ *
+ * Returns chance of rain by +15, +30, ... +120 minutes.
+ */
+export function cumulative(model: Model, p: number[]): number[] {
+  const cal = (model as unknown as { cum?: Array<{ a: number; b: number }> }).cum;
+  const out: number[] = [];
+  let survive = 1;
+  for (let l = 0; l < p.length; l++) {
+    survive *= 1 - p[l];
+    const chained = 1 - survive;
+    const c = cal?.[l];
+    // No table (an older model file): fall back to the largest single window,
+    // which understates rather than overstates. Wrong quietly beats alarming.
+    out.push(c ? sigmoid(c.a * logOdds(chained) + c.b) : Math.max(...p.slice(0, l + 1)));
+  }
+  return out;
+}
+
 export function forecastAtPoint(
   model: Model,
   point: { lon: number; lat: number },
