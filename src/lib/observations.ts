@@ -36,6 +36,10 @@ export interface Observations {
   forecastByArea: Map<string, AreaForecast>;
   /** slot key of the most recent rainfall observation */
   observedAt: string | null;
+  /** how old that slot is, in minutes — null when there is nothing stored */
+  ageMinutes: number | null;
+  /** lag positions with no stored slot behind them, e.g. [2] */
+  missingLags: number[];
 }
 
 /** Minutes between two slot keys, e.g. 2026-08-30T1430. */
@@ -49,15 +53,34 @@ function slotMinutes(a: string, b: string): number {
 }
 
 export function loadObservations(lags = 4): Observations {
-  const rainSlots = slotsFor("rainfall", lags + 2);
+  // Four extra, because a gap means the slot 45 minutes back is further down
+  // the list than position three.
+  const rainSlots = slotsFor("rainfall", lags + 4);
   const stationMap = new Map<string, Station>();
-  const history: Window[] = [];
+  const newest = rainSlots[0] ?? null;
 
-  for (let i = 0; i < lags; i++) {
-    const slot = rainSlots[i];
-    const wet = new Map<string, 0 | 1>();
-    const mm = new Map<string, number>();
-    if (slot) {
+  // Each stored slot goes at the position its OWN timestamp says, not at its
+  // position in the list.
+  //
+  // This used to read rainSlots[0..3] as [now, -15, -30, -45]. After a missing
+  // slot — one in 681 so far — everything behind the gap shifted, so "15
+  // minutes ago" was silently 30 and the lag features described a different
+  // hour than the model was told. Absence treated as continuity, which is the
+  // same failure as counting a missing gauge as dry. A hole now stays a hole:
+  // buildFeatures already guards every lag read with `?? 0` and every island
+  // figure with Number.isFinite.
+  const history: Window[] = Array.from({ length: lags }, () => ({
+    wet: new Map<string, 0 | 1>(), mm: new Map<string, number>(),
+  }));
+  const filled = new Array<boolean>(lags).fill(false);
+
+  for (const slot of rainSlots) {
+    if (!newest) break;
+    const i = Math.round(slotMinutes(newest, slot) / 15);
+    if (i < 0 || i >= lags || filled[i]) continue;
+    filled[i] = true;
+    const { wet, mm } = history[i];
+    {
       const pages = readRaw<RealtimePage[]>("rainfall", slot) ?? [];
       for (const p of pages) {
         for (const s of p.stations ?? []) {
@@ -79,7 +102,6 @@ export function loadObservations(lags = 4): Observations {
         }
       }
     }
-    history.push({ wet, mm });
   }
 
   const stations = [...stationMap.values()];
@@ -168,9 +190,20 @@ export function loadObservations(lags = 4): Observations {
     }
   }
 
+  // Wall-clock age of the newest slot. A slot key is the START of its window
+  // and NEA publishes 6-9 minutes behind, so 0-30 minutes is healthy; beyond
+  // that the poller has missed cycles and "now" is not now.
+  const nowSlot = (() => {
+    const t = new Date(Date.now() + 8 * 3600_000);
+    const mi = String(Math.floor(t.getUTCMinutes() / 15) * 15).padStart(2, "0");
+    return `${t.toISOString().slice(0, 10)}T${String(t.getUTCHours()).padStart(2, "0")}${mi}`;
+  })();
+
   return {
     stations, history, wind, islandWet, islandMm, areas, forecastByArea,
-    observedAt: rainSlots[0] ?? null,
+    observedAt: newest,
+    ageMinutes: newest ? slotMinutes(nowSlot, newest) : null,
+    missingLags: filled.map((ok, i) => (ok ? -1 : i)).filter((i) => i >= 0),
   };
 }
 

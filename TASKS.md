@@ -15,15 +15,6 @@ and a one-line task strands the *why*.
       deciding whether this needs anything at all.
       `from: self · measured 2026-09-08, live endpoint vs archive`
 
-- [ ] **A missing slot silently shifts the lag features.** `loadObservations`
-      takes the four newest stored slots as [now, -15, -30, -45] without
-      checking they are consecutive, so after a gap "15 minutes ago" is really
-      30. `slotMinutes` already exists in that file to compute true offsets and
-      is only used for the forecast join. One gap in 681 slots so far, so the
-      effect is small — but it is the "missing is not dry" failure again:
-      absence treated as continuity, with nothing logged.
-      `from: self · found via the 2026-09-02T0345 gap`
-
 - [ ] **The headline overstates at the confident end — 12 points.** Measured on
       the fresh 2026 holdout: "chance within the hour" reads 81.3% where it
       rains 69.4%, and 59.1% where it rains 50.1%. The bars are fine by
@@ -81,6 +72,18 @@ and a one-line task strands the *why*.
       `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
+
+- [x] A missing slot no longer shifts the lag features. Each stored slot is
+      placed at the offset its own timestamp gives, so a gap leaves a hole
+      rather than sliding older data forward; `buildFeatures` already guarded
+      every lag read. Verified by removing slots from a replay store and
+      watching `missingLags` report [2] and [1,2] while the rest held, then
+      returning to the exact original number on restore.
+
+      The route also refuses observations older than 60 minutes now. That was
+      the worse half of the same bug: a dead poller would have served hour-old
+      readings as "now" with nothing on the card saying so.
+      `from: self · 2026-09-11`
 
 - [x] Reliability diagram, on the fresh 2026 holdout. The per-window bars are
       close: expected calibration error 0.44 points at +15, top band 85.3%

@@ -33,6 +33,21 @@ export async function GET(req: NextRequest) {
   }
 
   const obs = loadObservations(4);
+  // A nowcast built on hour-old observations is worse than no answer: every
+  // persistence feature describes a different hour, and nothing on the card
+  // would say so. 60 minutes is far outside healthy operation (0-30) and
+  // catches a poller that has stopped rather than one that skipped a cycle.
+  // Overridable because replaying a past day through this route is a genuine
+  // use — score-point.mjs reads the log directly, but driving the real route
+  // is how the served answer gets checked — and historical observations are
+  // legitimately stale. Unset in production.
+  const maxAge = Number(process.env.MAX_OBS_AGE_MIN ?? 60);
+  if (obs.ageMinutes !== null && obs.ageMinutes > maxAge) {
+    return NextResponse.json(
+      { error: `Observations are ${Math.round(obs.ageMinutes)} minutes old — too stale to forecast from.` },
+      { status: 503 },
+    );
+  }
   if (!obs.stations.length || !obs.observedAt) {
     // No stored observations yet: say so rather than inventing a forecast.
     return NextResponse.json(
@@ -96,6 +111,11 @@ export async function GET(req: NextRequest) {
     rainingNow,
     nearestKm: out.nearestKm,
     observedAt: obs.observedAt,
+    // Diagnostics: how old the newest observation is, and which lag positions
+    // had no stored slot behind them. A forecast built on a gapped history is
+    // still a forecast, but a caller should be able to tell.
+    ageMinutes: obs.ageMinutes,
+    missingLags: obs.missingLags,
     // Flipped only once a reliability diagram shows 70% has meant 70%.
     calibrated: false,
   });
