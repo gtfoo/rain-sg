@@ -31,11 +31,19 @@ and a one-line task strands the *why*.
       absence treated as continuity, with nothing logged.
       `from: self · found via the 2026-09-02T0345 gap`
 
-- [ ] **Reliability diagram before dropping the "uncalibrated" label.**
-      The footer says "estimates uncalibrated" and that stays until we can show
-      70% has meant 70%. Calibration is applied (Platt, per lead, per
-      island-wetness band) but has never been *plotted* — asserted, not
-      observed.
+- [ ] **The headline overstates at the confident end — 12 points.** Measured on
+      the fresh 2026 holdout: "chance within the hour" reads 81.3% where it
+      rains 69.4%, and 59.1% where it rains 50.1%. The bars are fine by
+      comparison (worst band 5.7 points over at +15). The cause is that the
+      cumulative table was fitted on 2025, which was wetter than Jan-Aug 2026,
+      so it carries that base rate into a drier period.
+
+      Do NOT refit on 2026 and ship — that is exactly the mistake the clearing
+      correction made. Either pool 2025+2026 and accept that validation must
+      come later, or wait for the verification log to supply a genuine future
+      period. The log has been running since 2026-09-04 and now has real rain
+      in it. Leaning towards waiting; it is the owner's call.
+      `from: self · reliability diagram, 2026-09-11`
 
       Unblocked as of 2026-09-04: `appendVerification` existed but nothing ever
       called it, so the log was empty four days after going live. The poller now
@@ -89,6 +97,14 @@ and a one-line task strands the *why*.
       `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
+
+- [x] Reliability diagram, on the fresh 2026 holdout. The per-window bars are
+      close: expected calibration error 0.44 points at +15, top band 85.3%
+      predicted against 84.7% observed, worst band 5.7 points over. The
+      cumulative headline is not, and the "estimates uncalibrated" label stays
+      because of it. `reliability.js` and `mkdiagram.js` produce the numbers
+      and the plot.
+      `from: self · 2026-09-11`
 
 - [x] "Upwind cleared" is not worth adding, measured three ways. As a marginal
       signal it looked strong (11% vs 74% stopping rates). As a post-hoc

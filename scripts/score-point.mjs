@@ -79,11 +79,20 @@ const ranked = [...stations.values()]
 // ------------------------------------------------------ what we served
 const vf = path.join(DATA, "verification", `${DAY}.jsonl`);
 if (!fs.existsSync(vf)) { console.error(`no verification log at ${vf}`); process.exit(1); }
+// A slot is written once per reading as it fills, so the log holds up to three
+// rows per station per slot. Keep the highest seq — the forecast made with the
+// most complete window, which is the one most visitors were actually shown.
+// Counting every row would triple each window.
 const byIssue = new Map();
+const seqSeen = new Map();
 for (const line of fs.readFileSync(vf, "utf8").trim().split("\n")) {
   if (!line) continue;
   const r = JSON.parse(line);
   const slot = r.issued.slice(11);
+  const key = `${slot}|${r.stationId}`;
+  const seq = r.seq ?? 0;
+  if (seqSeen.has(key) && seqSeen.get(key) >= seq) continue;
+  seqSeen.set(key, seq);
   const m = byIssue.get(slot) ?? new Map();
   m.set(r.stationId, r.p);
   byIssue.set(slot, m);

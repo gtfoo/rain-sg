@@ -108,6 +108,20 @@ export interface VerificationRow {
   issued: string;
   stationId: string;
   /**
+   * Which write of this slot produced the row: 0 for the first, rising as the
+   * slot fills.
+   *
+   * A slot is written up to three times as its three 5-minute readings arrive,
+   * and the forecast improves each time — the first write sees a third of the
+   * current window. Recording only the first made the log systematically
+   * pessimistic about what people were actually shown, which is the wrong bias
+   * for a file whose entire purpose is "when we said 70%, did it rain 70%".
+   *
+   * READERS MUST KEEP THE HIGHEST seq per (issued, stationId) and discard the
+   * rest. Counting every row triples each window.
+   */
+  seq: number;
+  /**
    * All eight leads at once, +15 .. +120 minutes, as integer ten-thousandths.
    *
    * One row per station rather than per station-and-lead, and integers rather

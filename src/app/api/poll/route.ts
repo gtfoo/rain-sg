@@ -61,7 +61,7 @@ const model = modelJson as unknown as Model;
  * `lead` against the raw store, and rewriting an append-only file every 15
  * minutes to fill them in would be the more fragile of the two designs.
  */
-function recordForecasts(slot: string): number {
+function recordForecasts(slot: string, seq: number): number {
   const obs = loadObservations(4);
   if (!obs.stations.length || !obs.observedAt) return 0;
   const featuresFor = makeFeaturesFor(model, obs);
@@ -77,7 +77,7 @@ function recordForecasts(slot: string): number {
       const raw = predict(model, x, lead);
       p.push(Math.round(adjustForClearing(model, raw, lead, cleared) * 10_000));
     }
-    if (p.length === model.nlead) rows.push({ issued: slot, stationId: st.id, p });
+    if (p.length === model.nlead) rows.push({ issued: slot, stationId: st.id, seq, p });
   }
   appendVerification(rows);
   return rows.length;
@@ -92,10 +92,16 @@ export async function GET(req: NextRequest) {
   const results: Record<string, string> = {};
   let wrote = 0;
   let failed = 0;
-  // Set only when a rainfall slot is seen for the FIRST time. A slot is now
-  // written up to three times as it fills, and recording verification on each
-  // would triple-count one window in any reliability diagram built from it.
-  let newRainSlot: string | null = null;
+  // Set on EVERY rainfall write, with how many readings the slot now holds.
+  //
+  // This used to fire only on a slot's first write, to stop one window being
+  // counted three times. That worked, but it recorded the thinnest forecast of
+  // the three — the first write sees one of the window's three readings — so
+  // the log was systematically pessimistic about what people were shown. The
+  // duplicate problem is better solved at read time, by keeping the highest
+  // seq, than by throwing the good forecasts away.
+  let rainSlot: string | null = null;
+  let rainSeq = 0;
 
   for (const api of ENDPOINTS) {
     try {
@@ -122,7 +128,13 @@ export async function GET(req: NextRequest) {
         results[api] = `${slot} already complete`;
         continue;
       }
-      if (api === "rainfall" && !stored) newRainSlot = slot;
+      if (api === "rainfall") {
+        rainSlot = slot;
+        // Readings already held, before this write lands — 0 on a new slot.
+        rainSeq = stored
+          ? stored.reduce((n, pg) => n + (pg.readings?.length ?? 0), 0)
+          : 0;
+      }
       const { bytes } = saveRaw(api, slot, toWrite);
       results[api] = stored
         ? `${slot} merged (${(bytes / 1024).toFixed(1)} KB)`
@@ -135,9 +147,9 @@ export async function GET(req: NextRequest) {
   }
 
   let recorded = 0;
-  if (newRainSlot) {
+  if (rainSlot) {
     try {
-      recorded = recordForecasts(newRainSlot);
+      recorded = recordForecasts(rainSlot, rainSeq);
     } catch (err) {
       // Verification is a nice-to-have; the poll's job is to store data.
       results["verification"] = `failed: ${(err as Error).message}`;
