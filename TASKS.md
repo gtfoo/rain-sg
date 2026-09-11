@@ -6,12 +6,6 @@ and a one-line task strands the *why*.
 
 ## Open
 
-- [ ] **"Upwind cleared" as a model feature — weaker than it looked, still
-      real.** The post-hoc correction is dead: fitted on 2025 it scored +1.8%
-      Brier on held-out days of 2025 and **-0.6% on a fresh 64 days of 2026**,
-      because the bias it corrected was largely specific to 2025. It is
-      committed but zeroed, and should stay that way.
-
       The underlying signal survives, smaller. On 2026 the model still runs
       over at high cleared fractions — +6.9 points at 50-75% and +3.0 at
       75-100% — against +12.0 on 2025. So it belongs in the feature set at the
@@ -95,6 +89,18 @@ and a one-line task strands the *why*.
       `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
+
+- [x] "Upwind cleared" is not worth adding, measured three ways. As a marginal
+      signal it looked strong (11% vs 74% stopping rates). As a post-hoc
+      correction it scored +1.8% on held-out days of 2025 and -0.6% on fresh
+      2026. As a model feature, retrained on the same 2023/2022 setup as v5, it
+      moved nothing: 14.7% over NEA became 14.6% on 2026 and 9.4% became 9.3%
+      on 2025, with a fitted weight of -0.085 against 0.472 for upwind wetness,
+      decaying to zero by +120. The existing upwind feature had already
+      absorbed it. `lib7.js`, `train-v6.js` and `model-v6.json` are kept as the
+      record; v5 stays shipped. The UI line stays too — it earns its place by
+      making the forecast checkable, not by adding skill.
+      `from: self · closed 2026-09-11 after stages 1-3`
 
 - [x] Fresh 2026 holdout, 64 days of Jan-Aug, nothing fitted on it. The model
       generalises and is *better* than 2025 suggested: 39.9% over NEA at +15

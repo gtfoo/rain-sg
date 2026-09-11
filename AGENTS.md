@@ -94,6 +94,27 @@ Platt is fitted **per lead and per island-wetness band** (<2%, 2–20%, ≥20%).
 single global transform cannot correct a bias that appears only when the island
 is dry.
 
+## A strong marginal relationship can already be inside the model
+
+"Upwind cleared" — of the gauges upwind that were raining 30 minutes ago, how
+many have stopped — separates an 11% chance of rain ending from a 74% one on
+the 2025 holdout. A 6.7x swing, wider than upwind wetness alone, and the model
+carried no such feature. Every reason to add it.
+
+Added to `lib7.js` and retrained on the same 2023/2022 setup as v5, it changed
+**nothing**: 14.7% over NEA became 14.6% on 2026, and 9.4% became 9.3% on 2025.
+The fitted weight says why — at +15 min it is -0.085 against 0.472 for upwind
+wetness, and by +120 it has decayed to zero and flipped sign. The two are
+collinear enough that the existing feature had already absorbed it.
+
+The lesson is about what a marginal measurement can and cannot tell you. A
+strong relationship between a candidate and the outcome says nothing about
+whether the model already has it. Before building a feature, check the
+**residual**: bin the model's existing error by the candidate and see whether
+it explains any of it. That check cost ten minutes here and would have saved a
+retrain — and it is the same check that correctly predicted the post-hoc
+correction would fail.
+
 ## A held-out split of one period is not a holdout
 
 Fitting on even days of a holdout and scoring on its odd days feels like
