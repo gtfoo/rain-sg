@@ -94,6 +94,26 @@ Platt is fitted **per lead and per island-wetness band** (<2%, 2–20%, ≥20%).
 single global transform cannot correct a bias that appears only when the island
 is dry.
 
+## A held-out split of one period is not a holdout
+
+Fitting on even days of a holdout and scoring on its odd days feels like
+validation. It is not, for anything that varies by season or by year: both
+halves share whatever was peculiar to that period, so a period-specific bias
+looks exactly like signal.
+
+Measured, on the clearing correction. Across 2025, when 75-100% of upwind
+gauges had cleared, the model predicted continuing rain 12 points too high. A
+one-term correction fixed it and scored **+1.8% Brier on held-out days of the
+same 60 days**. On a fresh 64 days of 2026 the same correction scored
+**-0.6%**, because the model's bias in that bin was only 3 points there, not
+12 — so the correction overshot by 11. The 2025 numbers alone justified
+shipping it, and shipping it would have made the app worse.
+
+Validate anything fitted post-hoc against a **different period**, not a
+different slice of the same one. The three stacked adjustments here — the
+model's Platt calibration, the cumulative table, and anything added later —
+are all fitted on 2025, so 2026 is the check that matters.
+
 ## What the interface must not claim
 
 - **We do not anticipate rain forming.** Mean probability 15 minutes before rain

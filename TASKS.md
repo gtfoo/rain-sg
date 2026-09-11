@@ -6,17 +6,18 @@ and a one-line task strands the *why*.
 
 ## Open
 
-- [ ] **"Upwind cleared" may be a missing model feature, not just a caption.**
-      Measured on the 2025 holdout, over windows where it is raining and rain
-      stops next 35.5% of the time: when 0-5% of upwind gauges have cleared it
-      stops 11.1% of the time, and when 75-100% have cleared, 73.9%. A 6.7x
-      swing, wider than upwind wetness alone (65.3% vs 16.9%), because
-      "cleared" separates dry-because-it-stopped from dry-because-it-never-
-      rained. The feature set has upwind *wetness* and local and island mm
-      trends, but nothing for an upwind temporal derivative. "When will it
-      stop" is the app's strongest claim, so this is the likeliest place to
-      make it stronger. Needs a retrain, so it belongs with the quarterly one.
-      `from: self · measured while building the clearing line, 2026-09-11`
+- [ ] **"Upwind cleared" as a model feature — weaker than it looked, still
+      real.** The post-hoc correction is dead: fitted on 2025 it scored +1.8%
+      Brier on held-out days of 2025 and **-0.6% on a fresh 64 days of 2026**,
+      because the bias it corrected was largely specific to 2025. It is
+      committed but zeroed, and should stay that way.
+
+      The underlying signal survives, smaller. On 2026 the model still runs
+      over at high cleared fractions — +6.9 points at 50-75% and +3.0 at
+      75-100% — against +12.0 on 2025. So it belongs in the feature set at the
+      next retrain, where it gets a weight learned jointly with the other 27
+      rather than a hand-fitted patch on top. Do not resurrect the correction.
+      `from: self · fitted 2026-09-11, falsified against 2026 the same day`
 
 - [ ] **Wind is 27% complete while the day is running.** The model was trained
       on ~15 wind readings per 15-minute window; the live endpoint only advances
@@ -94,6 +95,15 @@ and a one-line task strands the *why*.
       `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
+
+- [x] Fresh 2026 holdout, 64 days of Jan-Aug, nothing fitted on it. The model
+      generalises and is *better* than 2025 suggested: 39.9% over NEA at +15
+      (2025: 35.4%) and 5.4% at +120 (2025: 1.1%). The cumulative table,
+      fitted on 2025 and already live, holds up and does more good on fresh
+      data than on its own: Brier -15% at one hour and -25% at two, against
+      the naive chaining. It still reads about 18% high in absolute terms.
+      The clearing correction failed, which is why it was held back.
+      `from: self · 2026-09-11`
 
 - [x] The verification log has a reader: `scripts/score-point.mjs`. Joins the
       recorded forecasts to the stored rainfall and blends the four nearest
