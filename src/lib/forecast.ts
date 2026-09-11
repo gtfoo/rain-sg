@@ -379,12 +379,45 @@ export function cumulative(model: Model, p: number[]): number[] {
   return out;
 }
 
+/**
+ * Nudge a "still raining" probability by how much has cleared upwind.
+ *
+ * The model does not carry this. Measured on the 2025 holdout, where it is
+ * raining and rain stops next 35.5% of the time, the model says "still
+ * raining" with a gap that grows monotonically with the cleared fraction —
+ * 4 points under at 0-5% cleared, 12 points OVER at 75-100%. It overstates
+ * continuation exactly when the rain is about to end, which is the moment the
+ * app's strongest claim is being asked for.
+ *
+ * One additive term in log-odds, fitted per lead on even days and scored on
+ * odd. Applied only at +15/+30/+45, where it measured +1.8%, +1.8% and +1.2%
+ * Brier; beyond that the fitted slope collapses and a constant intercept takes
+ * over, costing up to 5%, so those leads carry zeros. A clearing edge inside
+ * the 20 km search radius arrives within about 45 minutes anyway.
+ *
+ * This is a third adjustment stacked on a calibration stacked on a model, all
+ * fitted on the same 60 days. It should be folded into the feature set at the
+ * next retrain rather than living here for ever.
+ */
+export function adjustForClearing(
+  model: Model, p: number, lead: number, cleared: number | null,
+): number {
+  if (cleared === null) return p;
+  const t = (model as unknown as { clearedAdj?: Array<{ a: number; b: number }> })
+    .clearedAdj?.[lead];
+  if (!t || (t.a === 0 && t.b === 0)) return p;
+  return sigmoid(logOdds(p) + t.a * cleared + t.b);
+}
+
 export function forecastAtPoint(
   model: Model,
   point: { lon: number; lat: number },
   featuresFor: (s: Station, lead: number) => Float64Array | null,
   stations: Station[],
   k = 4,
+  /** Per-station post-hoc nudge, applied before blending so each gauge is
+   *  adjusted by its OWN upwind picture rather than the point's. */
+  adjust?: (s: Station, lead: number, p: number) => number,
 ): PointForecast | null {
   const ranked = stations
     .map((s) => ({ station: s, km: kmBetween(point, s) }))
@@ -408,7 +441,8 @@ export function forecastAtPoint(
     for (const r of ranked) {
       const x = featuresFor(r.station, lead);
       if (!x) continue;
-      const pr = predict(model, x, lead);
+      const pr0 = predict(model, x, lead);
+      const pr = adjust ? adjust(r.station, lead, pr0) : pr0;
       const w = 1 / Math.max(0.5, r.km) ** 2; // inverse distance squared
       num += pr * w;
       den += w;

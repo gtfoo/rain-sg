@@ -209,6 +209,39 @@ export function makeFeaturesFor(model: Model, obs: Observations) {
     }, lead);
 }
 
+/**
+ * Of the upwind gauges that were raining half an hour ago, how many have
+ * stopped — the clearing edge, as a fraction.
+ *
+ * Returns null when the question does not apply: the station is not itself
+ * raining, the wind is too weak for "upwind" to mean anything, or too few
+ * upwind gauges were wet to measure against. Null means "no adjustment",
+ * never "no clearing".
+ */
+export function clearedFractionFor(s: Station, obs: Observations): number | null {
+  if (obs.history[0]?.wet.get(s.id) !== 1) return null;
+  const before = obs.history[2]?.wet;
+  if (!before || !obs.wind) return null;
+  const speed = Math.hypot(obs.wind.u, obs.wind.v);
+  if (speed < 1) return null;
+  const ux = obs.wind.u / speed, uy = obs.wind.v / speed;
+
+  let cleared = 0, wasWet = 0;
+  for (const o of obs.stations) {
+    if (o.id === s.id) continue;
+    const dx = (o.lon - s.lon) * 111.3 * Math.cos((s.lat * Math.PI) / 180);
+    const dy = (o.lat - s.lat) * 110.6;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.5 || d > 20) continue;
+    if ((dx / d) * ux + (dy / d) * uy >= 0) continue;      // downwind
+    if (before.get(o.id) !== 1) continue;
+    wasWet++;
+    if (obs.history[0].wet.get(o.id) === 0) cleared++;
+  }
+  // Under three, the fraction is a coin toss dressed as a measurement.
+  return wasWet >= 3 ? cleared / wasWet : null;
+}
+
 /** Neighbour lists at the radii the model expects. */
 export function neighboursOf(s: Station, all: Station[]) {
   const within = (r: number) => all.filter((o) => o.id !== s.id && kmBetween(s, o) <= r);

@@ -20,8 +20,10 @@ import { readRaw, saveRaw, pruneRaw, appendVerification } from "@/lib/store";
 import type { VerificationRow } from "@/lib/store";
 import modelJson from "@/model/model.json";
 import type { Model } from "@/lib/forecast";
-import { predict } from "@/lib/forecast";
-import { loadObservations, makeFeaturesFor } from "@/lib/observations";
+import { predict, adjustForClearing } from "@/lib/forecast";
+import {
+  loadObservations, makeFeaturesFor, clearedFractionFor,
+} from "@/lib/observations";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,11 +67,15 @@ function recordForecasts(slot: string): number {
   const featuresFor = makeFeaturesFor(model, obs);
   const rows: VerificationRow[] = [];
   for (const st of obs.stations) {
+    // The same clearing nudge the forecast route applies, so the log records
+    // what was served rather than an unadjusted shadow of it.
+    const cleared = clearedFractionFor(st, obs);
     const p: number[] = [];
     for (let lead = 0; lead < model.nlead; lead++) {
       const x = featuresFor(st, lead);
       if (!x) break;                       // station silent: no row at all
-      p.push(Math.round(predict(model, x, lead) * 10_000));
+      const raw = predict(model, x, lead);
+      p.push(Math.round(adjustForClearing(model, raw, lead, cleared) * 10_000));
     }
     if (p.length === model.nlead) rows.push({ issued: slot, stationId: st.id, p });
   }

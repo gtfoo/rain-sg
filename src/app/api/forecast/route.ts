@@ -6,9 +6,12 @@ import { NextRequest, NextResponse } from "next/server";
 import modelJson from "@/model/model.json";
 import type { Model } from "@/lib/forecast";
 import {
-  forecastAtPoint, cumulative, upwindRain, upwindClearing, kmBetween,
+  forecastAtPoint, cumulative, upwindRain, upwindClearing, adjustForClearing,
+  kmBetween,
 } from "@/lib/forecast";
-import { loadObservations, makeFeaturesFor } from "@/lib/observations";
+import {
+  loadObservations, makeFeaturesFor, clearedFractionFor,
+} from "@/lib/observations";
 import { inSingapore } from "@/lib/onemap";
 
 export const runtime = "nodejs";
@@ -45,7 +48,16 @@ export async function GET(req: NextRequest) {
 
   const featuresFor = makeFeaturesFor(model, obs);
 
-  const out = forecastAtPoint(model, { lat, lon }, featuresFor, obs.stations, 4);
+  // Each gauge is nudged by its own upwind picture, not the point's, so the
+  // blend stays a blend of per-gauge answers.
+  const clearedCache = new Map<string, number | null>();
+  const out = forecastAtPoint(
+    model, { lat, lon }, featuresFor, obs.stations, 4,
+    (s, lead, p) => {
+      if (!clearedCache.has(s.id)) clearedCache.set(s.id, clearedFractionFor(s, obs));
+      return adjustForClearing(model, p, lead, clearedCache.get(s.id) ?? null);
+    },
+  );
   if (!out) {
     return NextResponse.json(
       { error: "Not enough reporting gauges nearby right now." },
