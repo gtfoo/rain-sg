@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import modelJson from "@/model/model.json";
 import type { Model } from "@/lib/forecast";
-import { forecastAtPoint, cumulative, kmBetween } from "@/lib/forecast";
+import { forecastAtPoint, cumulative, upwindRain, kmBetween } from "@/lib/forecast";
 import { loadObservations, makeFeaturesFor } from "@/lib/observations";
 import { inSingapore } from "@/lib/onemap";
 
@@ -65,6 +65,11 @@ export async function GET(req: NextRequest) {
     // derived on the client, because turning eight per-window numbers
     // into this one needs a calibration that lives in the model file.
     cum: cumulative(model, out.p),
+    // Suppressed while it is raining here: once you are in it, where else
+    // it is raining is no longer the question being asked.
+    upwind: rainingNow
+      ? null
+      : upwindRain({ lat, lon }, obs.stations, obs.history[0].wet, obs.wind, obs.areas),
     spread: out.spread,
     rainingNow,
     nearestKm: out.nearestKm,

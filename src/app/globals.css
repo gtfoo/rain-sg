@@ -130,3 +130,11 @@ body {
   margin: 6px 0 0; font-size: 0.62rem; color: var(--muted);
   letter-spacing: 0.02em; text-align: center;
 }
+
+/* The upwind line: an observation the reader can check, so it is set apart
+   from the forecast above it rather than blended into it. */
+.upwind {
+  margin: 14px 0 0; padding-left: 10px; max-width: 30ch;
+  border-left: 2px solid var(--accent);
+  font-size: 0.82rem; line-height: 1.45; color: var(--ink-2);
+}

@@ -15,6 +15,8 @@ interface Forecast {
   p: number[];
   /** chance of ANY rain by +15 .. +120 min — cumulative, not per window */
   cum: number[];
+  /** nearest rain already falling upwind, if any is close enough to matter */
+  upwind: { area: string; km: number; dir: string } | null;
   /** low/high across contributing gauges — where they disagree, so should we */
   spread: Array<{ lo: number; hi: number }>;
   /** whether it is raining at the location right now */
@@ -298,6 +300,15 @@ export default function Page() {
             <section className="verdict">
               <p className="head">{v.head}</p>
               <p className="detail">{v.detail}</p>
+              {forecast.upwind && (
+                <p className="upwind">
+                  Raining in {forecast.upwind.area},{" "}
+                  {forecast.upwind.km < 1.5
+                    ? "about 1 km"
+                    : `${Math.round(forecast.upwind.km)} km`}{" "}
+                  {forecast.upwind.dir} — wind is bringing it this way.
+                </p>
+              )}
             </section>
 
             <section className="strip" aria-label="Chance of rain by time">

@@ -236,6 +236,79 @@ export interface PointForecast {
  *
  * Returns chance of rain by +15, +30, ... +120 minutes.
  */
+/** Where rain already falling can be seen from, and roughly where it is. */
+export interface UpwindRain {
+  /** NEA forecast area nearest the raining gauge — a name, not a road */
+  area: string;
+  km: number;
+  /** eight-point compass word, e.g. "west" */
+  dir: string;
+}
+
+const COMPASS8 = [
+  "north", "north-east", "east", "south-east",
+  "south", "south-west", "west", "north-west",
+];
+
+/**
+ * The nearest gauge that is raining now AND lies upwind.
+ *
+ * This adds nothing to the forecast — the model already uses "wet fraction
+ * among gauges within 20 km that lie upwind" as a feature. What it adds is
+ * that the reader can check it. "Raining in Jurong West, 9 km north-west"
+ * is falsifiable by ringing someone in Jurong; "76% chance within the hour"
+ * is not.
+ *
+ * Two deliberate silences. Nothing is claimed about arrival time: distance
+ * over wind speed said 9 minutes for the 2026-09-10 event and it took 15,
+ * because surface wind is not cell steering. And below 1 m/s the island-mean
+ * direction wanders, so "upwind" stops meaning anything and this returns
+ * null rather than pointing somewhere arbitrary.
+ */
+export function upwindRain(
+  point: { lat: number; lon: number },
+  stations: Station[],
+  wet: Map<string, 0 | 1>,
+  wind: WindVector | null,
+  areas: Array<{ name: string; lat: number; lon: number }>,
+): UpwindRain | null {
+  if (!wind || !areas.length) return null;
+  const speed = Math.hypot(wind.u, wind.v);
+  if (speed < 1) return null;
+  const ux = wind.u / speed, uy = wind.v / speed;
+
+  const offset = (s: { lat: number; lon: number }) => ({
+    dx: (s.lon - point.lon) * 111.3 * Math.cos((point.lat * Math.PI) / 180),
+    dy: (s.lat - point.lat) * 110.6,
+  });
+
+  let best: { km: number; station: Station } | null = null;
+  for (const s of stations) {
+    if (wet.get(s.id) !== 1) continue;
+    const { dx, dy } = offset(s);
+    const d = Math.hypot(dx, dy);
+    // Under 0.5 km it is effectively here, and past 20 km it is weather rather
+    // than something about to happen to you.
+    if (d < 0.5 || d > 20) continue;
+    // Upwind means lying in the direction the wind blows FROM, so the unit
+    // vector to the gauge points against the travel vector.
+    if ((dx / d) * ux + (dy / d) * uy >= 0) continue;
+    if (!best || d < best.km) best = { km: d, station: s };
+  }
+  if (!best) return null;
+
+  const { dx, dy } = offset(best.station);
+  const deg = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+  const dir = COMPASS8[Math.round(deg / 45) % 8];
+
+  let area = "", nearest = Infinity;
+  for (const a of areas) {
+    const q = kmBetween(a, best.station);
+    if (q < nearest) { nearest = q; area = a.name; }
+  }
+  return area ? { area, km: best.km, dir } : null;
+}
+
 export function cumulative(model: Model, p: number[]): number[] {
   const cal = (model as unknown as { cum?: Array<{ a: number; b: number }> }).cum;
   const out: number[] = [];
