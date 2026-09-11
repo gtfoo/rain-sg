@@ -6,13 +6,6 @@ and a one-line task strands the *why*.
 
 ## Open
 
-      The underlying signal survives, smaller. On 2026 the model still runs
-      over at high cleared fractions — +6.9 points at 50-75% and +3.0 at
-      75-100% — against +12.0 on 2025. So it belongs in the feature set at the
-      next retrain, where it gets a weight learned jointly with the other 27
-      rather than a hand-fitted patch on top. Do not resurrect the correction.
-      `from: self · fitted 2026-09-11, falsified against 2026 the same day`
-
 - [ ] **Wind is 27% complete while the day is running.** The model was trained
       on ~15 wind readings per 15-minute window; the live endpoint only advances
       every 4-6 minutes, so polling supplies 3-4 and no rate fixes it. The
@@ -44,15 +37,6 @@ and a one-line task strands the *why*.
       period. The log has been running since 2026-09-04 and now has real rain
       in it. Leaning towards waiting; it is the owner's call.
       `from: self · reliability diagram, 2026-09-11`
-
-      Unblocked as of 2026-09-04: `appendVerification` existed but nothing ever
-      called it, so the log was empty four days after going live. The poller now
-      records all 88 stations x 8 leads on every slot that advances. At 216 MB
-      a year it can run indefinitely; the diagram needs enough rain to have
-      fallen, which the first four days did not supply (0.19% wet, verified
-      against NEA's own archive).
-      `from: self · the one honesty claim the UI makes that is not yet earned`
-
 
 - [ ] **GBM across all eight leads.** Beat the linear model at every lead
       measured (-6.3% at 15 min, -0.4% to -0.9% beyond), but only four of eight
