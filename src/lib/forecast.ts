@@ -309,6 +309,61 @@ export function upwindRain(
   return area ? { area, km: best.km, dir } : null;
 }
 
+/**
+ * The mirror of {@link upwindRain}: while it is raining on you, the nearest
+ * place upwind where it has already stopped.
+ *
+ * Worth showing because the signal is strong, which was not obvious — rain can
+ * end because a clear edge arrives, or because the cell overhead simply dies,
+ * and only the first is visible anywhere. Measured across the 60-day 2025
+ * holdout, on windows where it is raining and rain stops next 35.5% of the
+ * time:
+ *
+ *   upwind gauges cleared    0-5%  ->  11.1% stopped next window
+ *                          75-100% ->  73.9%
+ *
+ * A 6.7x swing, and stronger than upwind wetness alone (65.3% against 16.9%),
+ * because "cleared" separates dry-because-it-stopped from dry-because-it-never-
+ * rained. That distinction is not currently a model feature — see TASKS.md.
+ */
+export function upwindClearing(
+  point: { lat: number; lon: number },
+  stations: Station[],
+  wetNow: Map<string, 0 | 1>,
+  wetBefore: Map<string, 0 | 1>,
+  wind: WindVector | null,
+  areas: Array<{ name: string; lat: number; lon: number }>,
+): UpwindRain | null {
+  if (!wind || !areas.length) return null;
+  const speed = Math.hypot(wind.u, wind.v);
+  if (speed < 1) return null;
+  const ux = wind.u / speed, uy = wind.v / speed;
+
+  let best: { km: number; station: Station } | null = null;
+  for (const s of stations) {
+    // Dry now, but raining half an hour ago: the edge has passed it.
+    if (wetNow.get(s.id) !== 0 || wetBefore.get(s.id) !== 1) continue;
+    const dx = (s.lon - point.lon) * 111.3 * Math.cos((point.lat * Math.PI) / 180);
+    const dy = (s.lat - point.lat) * 110.6;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.5 || d > 20) continue;
+    if ((dx / d) * ux + (dy / d) * uy >= 0) continue;
+    if (!best || d < best.km) best = { km: d, station: s };
+  }
+  if (!best) return null;
+
+  const dx = (best.station.lon - point.lon) * 111.3 * Math.cos((point.lat * Math.PI) / 180);
+  const dy = (best.station.lat - point.lat) * 110.6;
+  const dir = COMPASS8[Math.round(((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360 / 45) % 8];
+
+  let area = "", nearest = Infinity;
+  for (const a of areas) {
+    const q = kmBetween(a, best.station);
+    if (q < nearest) { nearest = q; area = a.name; }
+  }
+  return area ? { area, km: best.km, dir } : null;
+}
+
 export function cumulative(model: Model, p: number[]): number[] {
   const cal = (model as unknown as { cum?: Array<{ a: number; b: number }> }).cum;
   const out: number[] = [];

@@ -17,6 +17,8 @@ interface Forecast {
   cum: number[];
   /** nearest rain already falling upwind, if any is close enough to matter */
   upwind: { area: string; km: number; dir: string } | null;
+  /** nearest place upwind where it has already stopped, while raining here */
+  clearing: { area: string; km: number; dir: string } | null;
   /** low/high across contributing gauges — where they disagree, so should we */
   spread: Array<{ lo: number; hi: number }>;
   /** whether it is raining at the location right now */
@@ -113,6 +115,11 @@ function verdict(f: Forecast): { head: string; detail: string } {
     head: "Probably dry",
     detail: `About ${pc(twoHours)}% chance of rain in the next two hours.`,
   };
+}
+
+/** Under 1.5 km, "1 km" is more honest than a decimal the gauges cannot support. */
+function away(km: number): string {
+  return km < 1.5 ? "about 1 km" : `${Math.round(km)} km`;
 }
 
 function shade(p: number): string {
@@ -302,11 +309,15 @@ export default function Page() {
               <p className="detail">{v.detail}</p>
               {forecast.upwind && (
                 <p className="upwind">
-                  Raining in {forecast.upwind.area},{" "}
-                  {forecast.upwind.km < 1.5
-                    ? "about 1 km"
-                    : `${Math.round(forecast.upwind.km)} km`}{" "}
+                  Raining in {forecast.upwind.area}, {away(forecast.upwind.km)}{" "}
                   {forecast.upwind.dir} — wind is bringing it this way.
+                </p>
+              )}
+              {forecast.clearing && (
+                <p className="upwind">
+                  Already cleared in {forecast.clearing.area},{" "}
+                  {away(forecast.clearing.km)} {forecast.clearing.dir} — the
+                  clearing is heading this way.
                 </p>
               )}
             </section>

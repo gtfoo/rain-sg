@@ -6,12 +6,17 @@ and a one-line task strands the *why*.
 
 ## Open
 
-- [ ] **Nothing reads the verification log.** The poller has recorded ~600 KB a
-      day since 2026-09-04 and no code scores it — I shipped the writer without
-      the reader. This is what turns the collected data into "when we said 70%,
-      it rained X% of the time", and it blocks the reliability diagram below.
-      Wants a script in the repo rather than analysis that lives only in a chat.
-      `from: self · created the gap on 2026-09-04, noticed 2026-09-07`
+- [ ] **"Upwind cleared" may be a missing model feature, not just a caption.**
+      Measured on the 2025 holdout, over windows where it is raining and rain
+      stops next 35.5% of the time: when 0-5% of upwind gauges have cleared it
+      stops 11.1% of the time, and when 75-100% have cleared, 73.9%. A 6.7x
+      swing, wider than upwind wetness alone (65.3% vs 16.9%), because
+      "cleared" separates dry-because-it-stopped from dry-because-it-never-
+      rained. The feature set has upwind *wetness* and local and island mm
+      trends, but nothing for an upwind temporal derivative. "When will it
+      stop" is the app's strongest claim, so this is the likeliest place to
+      make it stronger. Needs a retrain, so it belongs with the quarterly one.
+      `from: self · measured while building the clearing line, 2026-09-11`
 
 - [ ] **Wind is 27% complete while the day is running.** The model was trained
       on ~15 wind readings per 15-minute window; the live endpoint only advances
@@ -89,6 +94,12 @@ and a one-line task strands the *why*.
       `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
+
+- [x] The verification log has a reader: `scripts/score-point.mjs`. Joins the
+      recorded forecasts to the stored rainfall and blends the four nearest
+      reporting gauges exactly as `forecastAtPoint` does, so it scores what was
+      served rather than a replay. Runs on the box against its own DATA_DIR.
+      `from: self · closed 2026-09-11`
 
 - [x] Windowed rate, and the task was filed against the wrong program. The
       defect was never in `/api/poll` — that logs only run duration, computes
