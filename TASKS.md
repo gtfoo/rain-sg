@@ -6,15 +6,6 @@ and a one-line task strands the *why*.
 
 ## Open
 
-- [ ] **Wind is 27% complete while the day is running.** The model was trained
-      on ~15 wind readings per 15-minute window; the live endpoint only advances
-      every 4-6 minutes, so polling supplies 3-4 and no rate fixes it. The
-      nightly backfill takes the stored record to 99.8%, but a forecast served
-      at 3pm used the thin version. Measure how far the four wind features
-      actually move between a 3-sample and a 15-sample window mean before
-      deciding whether this needs anything at all.
-      `from: self · measured 2026-09-08, live endpoint vs archive`
-
 - [ ] **The headline overstates at the confident end — 12 points.** Measured on
       the fresh 2026 holdout: "chance within the hour" reads 81.3% where it
       rains 69.4%, and 59.1% where it rains 50.1%. The bars are fine by
@@ -72,6 +63,18 @@ and a one-line task strands the *why*.
       `from: self · re-measured on the fresh 2025 holdout, 2026-08-31`
 
 ## Done
+
+- [x] The wind gap is immaterial — measured, not assumed. Live polling supplies
+      3 of the ~15 readings per window the model trained on, which sounded
+      alarming and changes nothing: across 5,680 windows of the 2026 holdout the
+      speed moves 0.04 m/s on average and the direction 0.8 degrees, with only
+      0.1% of windows moving past 10 degrees. The island wind is a mean over
+      sixty-odd stations at each timestamp, so it is already averaged before the
+      time dimension is touched; sampling 3 timestamps of 15 subsamples the
+      small dimension. The upwind/downwind split moves half a percent of the
+      ring. Declined the droplet agent's offer of three extra daily backfills on
+      that basis. `windsample.js`.
+      `from: self · 2026-09-13`
 
 - [x] A missing slot no longer shifts the lag features. Each stored slot is
       placed at the offset its own timestamp gives, so a gap leaves a hole
