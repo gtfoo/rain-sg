@@ -138,3 +138,12 @@ body {
   border-left: 2px solid var(--accent);
   font-size: 0.82rem; line-height: 1.45; color: var(--ink-2);
 }
+
+/* Shown only with no connection. Deliberately loud for a small card: installed
+   to a home screen this looks like a native app, and a forecast that cannot be
+   refreshed must not be mistaken for a current one. */
+.offline {
+  margin: 0 0 12px; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid #c2453b; color: #e0736a;
+  font-size: 0.72rem; line-height: 1.4;
+}

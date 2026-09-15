@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import ServiceWorker from "./ServiceWorker";
 
 interface Place {
   name: string;
@@ -261,6 +262,7 @@ export default function Page() {
   return (
     <main className="wrap">
       <div className="card">
+        <ServiceWorker />
         <header className="top">
           <div className="loc">
             {place ? place.name : "Where are you?"}
