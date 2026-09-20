@@ -6,19 +6,31 @@ and a one-line task strands the *why*.
 
 ## Open
 
-- [ ] **The headline overstates at the confident end — 12 points.** Measured on
-      the fresh 2026 holdout: "chance within the hour" reads 81.3% where it
-      rains 69.4%, and 59.1% where it rains 50.1%. The bars are fine by
-      comparison (worst band 5.7 points over at +15). The cause is that the
-      cumulative table was fitted on 2025, which was wetter than Jan-Aug 2026,
-      so it carries that base rate into a drier period.
+- [ ] **The headline's calibration is unresolved, and needs rain rather than
+      thought.** The 12-point overstatement measured on the 2026 holdout is only
+      weakly supported in production. Scored on 17 days of the verification log
+      — a period nothing was fitted on — the top band reads 77.6% where rain
+      follows 70.1%, so the direction agrees but the magnitude is half, on 177
+      samples. And the pattern is not a consistent overstatement: +5.3 points at
+      10-20%, **−8.2 at 30-50%**, +7.6 at 70-100%.
 
-      Do NOT refit on 2026 and ship — that is exactly the mistake the clearing
-      correction made. Either pool 2025+2026 and accept that validation must
-      come later, or wait for the verification log to supply a genuine future
-      period. The log has been running since 2026-09-04 and now has real rain
-      in it. Leaning towards waiting; it is the owner's call.
-      `from: self · reliability diagram, 2026-09-11`
+      A refit on 2025+2026 pooled was built and **not shipped**: it moves
+      expected calibration error 0.47 → 0.45 on production and makes the 30-50%
+      band worse. No two-parameter monotone transform can fix a non-monotonic
+      pattern, and adding capacity to chase 177 samples is how the clearing
+      correction died.
+
+      Resolving the top band to ±2 points needs roughly 2,000 samples against
+      the 177 we have — about a hundred rainy days at the current rate. So this
+      is now a waiting task with a trigger, not an open question: re-run
+      `scripts/score-calibration.mjs` once the log holds a few hundred top-band
+      cases. `cum-pooled.json` is kept in ~/rain-data if it is ever wanted.
+
+      Cheap alternative that needs no data: at the top band the card already
+      says "Rain coming", which carries the message. The percentage beside it is
+      the least reliable number on the page, and dropping it there would remove
+      false precision at no cost. Product call, not a modelling one.
+      `from: self · measured against production 2026-09-20`
 
 - [ ] **GBM across all eight leads.** Beat the linear model at every lead
       measured (-6.3% at 15 min, -0.4% to -0.9% beyond), but only four of eight
