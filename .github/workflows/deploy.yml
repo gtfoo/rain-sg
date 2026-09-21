@@ -41,6 +41,7 @@ jobs:
 
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm test
       - run: node scripts/sanity.mjs
       - run: npm run build
 

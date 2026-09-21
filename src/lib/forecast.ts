@@ -367,14 +367,31 @@ export function upwindClearing(
 export function cumulative(model: Model, p: number[]): number[] {
   const cal = (model as unknown as { cum?: Array<{ a: number; b: number }> }).cum;
   const out: number[] = [];
-  let survive = 1;
+  let survive = 1, running = 0, widest = 0;
   for (let l = 0; l < p.length; l++) {
     survive *= 1 - p[l];
     const chained = 1 - survive;
     const c = cal?.[l];
     // No table (an older model file): fall back to the largest single window,
     // which understates rather than overstates. Wrong quietly beats alarming.
-    out.push(c ? sigmoid(c.a * logOdds(chained) + c.b) : Math.max(...p.slice(0, l + 1)));
+    let v = c ? sigmoid(c.a * logOdds(chained) + c.b) : Math.max(...p.slice(0, l + 1));
+
+    // Two things the calibration is not allowed to break, because they are
+    // arithmetic rather than fit. "Within two hours" CONTAINS "within one
+    // hour", so it cannot be smaller; and a span cannot be less likely than
+    // any single window inside it.
+    //
+    // Each horizon carries its own two Platt parameters, fitted independently
+    // on the distribution of ordinary inputs. Nothing tied them together, so an
+    // unusual shape came out incoherent: [0.02, 0.60, 0.05, 0…] gave 29.7% for
+    // two hours against a 60% window sitting inside it, and a rise-then-decay
+    // vector had +120 read lower than +105. The card shows the hour and the two
+    // hours side by side, so that reached the screen as "38% within the hour,
+    // 35% within two".
+    widest = Math.max(widest, p[l]);
+    v = Math.max(v, running, widest);
+    running = v;
+    out.push(v);
   }
   return out;
 }
