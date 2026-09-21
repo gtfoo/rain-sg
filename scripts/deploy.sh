@@ -43,7 +43,12 @@ log "node $(node -v), npm $(npm -v)"
 # shipped twice on this box.
 [ -f .next/standalone/server.js ] || { echo "!! no standalone server.js - CI did not send a build" >&2; exit 1; }
 
-ASSET=$(find .next/standalone/.next/static -type f 2>/dev/null | head -1)
+# -print -quit rather than `| head -1`: head exits after the first line, the
+# writer gets SIGPIPE, and `set -o pipefail` turns that into exit 141 and a
+# failed deploy. It is a race against how long find takes, so it stayed
+# hidden until the static output grew — then killed a deploy after the
+# bundle had shipped but before the restart.
+ASSET=$(find .next/standalone/.next/static -type f -print -quit 2>/dev/null)
 if [ -z "$ASSET" ]; then
   echo "!! no files under .next/standalone/.next/static - refusing to call this deployed" >&2
   exit 1
@@ -69,7 +74,13 @@ curl -fsS -o /dev/null --max-time 10 "http://127.0.0.1:3004/" || {
   echo "!! app did not answer on 3004"; sudo systemctl status "$SERVICE" --no-pager | tail -20; exit 1; }
 log "app answering on 3004"
 
-if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:3004\|\[::\]:3004'; then
+# Captured rather than piped, and for a worse reason than the one above. With
+# pipefail, `ss | grep -q` returns ss's SIGPIPE (141) even when grep MATCHED --
+# so the condition reads false exactly when it has found the thing it guards
+# against, and a service bound to every interface would sail through the check
+# that exists to catch it.
+LISTENERS=$(ss -ltn 2>/dev/null || true)
+if printf '%s\n' "$LISTENERS" | grep -q '0\.0\.0\.0:3004\|\[::\]:3004'; then
   echo "!! listening on all interfaces - Caddy must be the only entry point" >&2
   exit 1
 fi
